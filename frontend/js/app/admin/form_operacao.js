@@ -23,8 +23,8 @@
         // Normaliza para string
         let normalized = String(val).toLowerCase().trim();
 
-        // Tratamento especial para houve_anormalidade (pode vir bool, 't', 'f', 'sim', 'nao', 0/1)
-        if (name === "houve_anormalidade") {
+        // Tratamento especial para campos sim/nao (pode vir bool, 't', 'f', 'sim', 'nao', 0/1)
+        if (name === "houve_anormalidade" || name === "evento_encerrado") {
             if (
                 normalized === "true" ||
                 normalized === "t" ||
@@ -130,6 +130,19 @@
             setVal(
                 "hora_fim",
                 d.hora_fim ? String(d.hora_fim).substring(0, 5) : ""
+            );
+
+            // Evento encerrado (derivado da presença de hora_fim, igual ao form do operador)
+            setRadio("evento_encerrado", d.hora_fim ? "sim" : "nao");
+
+            // Horários da operação
+            setVal(
+                "hora_entrada",
+                d.hora_entrada ? String(d.hora_entrada).substring(0, 5) : ""
+            );
+            setVal(
+                "hora_saida",
+                d.hora_saida ? String(d.hora_saida).substring(0, 5) : ""
             );
 
             // Trilhas e observações

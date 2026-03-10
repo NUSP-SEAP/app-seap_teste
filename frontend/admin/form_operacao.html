@@ -8,7 +8,7 @@
     <meta content="width=device-width, initial-scale=1" name="viewport" />
     <title>Detalhe da Operação | Admin</title>
 
-    <link rel="stylesheet" href="/css/app/forms/operacao/index.css?v=20260305">
+    <link rel="stylesheet" href="/css/app/forms/operacao/index.css?v=20260310">
     <link rel="stylesheet" href="/css/app/body.css">
 
     <style>
@@ -93,16 +93,43 @@
                         <input id="horario_pauta" type="time" readonly />
                     </div>
                     <div>
-                        <label class="required" for="hora_inicio">Horário de início</label>
+                        <label class="required" for="hora_inicio">Início do evento</label>
                         <input id="hora_inicio" type="time" readonly />
                     </div>
                     <div>
-                        <label for="hora_fim">Horário do término</label>
+                        <label for="hora_fim">Término do evento</label>
                         <input id="hora_fim" type="time" readonly />
                     </div>
                 </div>
 
-                <!-- Trilha dos Gravadores (idêntico ao form do operador, só que readonly) -->
+                <!-- Evento Encerrado + Horários da Operação -->
+                <div class="grid grid-3">
+                    <div>
+                        <label>Evento Encerrado</label>
+                        <div aria-label="Evento encerrado" class="field-inline" role="radiogroup">
+                            <label>
+                                <input id="evento_encerrado_sim" name="evento_encerrado" type="radio" value="sim"
+                                    disabled />
+                                Sim
+                            </label>
+                            <label>
+                                <input id="evento_encerrado_nao" name="evento_encerrado" type="radio" value="nao"
+                                    disabled />
+                                Não
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="hora_entrada">Início da operação</label>
+                        <input id="hora_entrada" type="time" readonly />
+                    </div>
+                    <div>
+                        <label for="hora_saida">Término da operação</label>
+                        <input id="hora_saida" type="time" readonly />
+                    </div>
+                </div>
+
+                <!-- Trilha dos Gravadores -->
                 <div class="grid grid-2">
                     <div>
                         <div class="section-title">Trilha do Gravador 01</div>
@@ -159,7 +186,7 @@
     <script src="/js/config.js"></script>
     <script src="/js/auth_jwt.js"></script>
     <script src="/js/session-autoload.js" defer></script>
-    <script src="/js/app/admin/form_operacao.js" defer></script>
+    <script src="/js/app/admin/form_operacao.js?v=20260310" defer></script>
 </body>
 
 </html>
