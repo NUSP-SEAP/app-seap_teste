@@ -1,3 +1,10 @@
+# === Incluir APENAS frontend/ e backend/ ===
+# Ignorar tudo na raiz, exceto o que é explicitamente permitido
+/*
+!frontend/
+!backend/
+!.gitignore
+
 # Python
 __pycache__/
 *.pyc
@@ -15,8 +22,8 @@ env/
 # Variáveis de ambiente
 .env
 
-# Arquivos de mídia do projeto
-files/
+# Config local do frontend (cada máquina tem o seu)
+frontend/js/config.js
 
 # IDE
 .vscode/
@@ -35,14 +42,8 @@ node_modules/
 # Logs
 *.log
 
-# Claude Code
-/.claude/
-
-# Notas e docs internos
-/others/
-CLAUDE.md
-ideias.md
-prompts.md
-
-# Configurações locais por máquina
-frontend/js/config.js
+# Arquivos locais do backend
+backend/.env.example
+backend/.streamlit/
+backend/migrations/001_refatoracao_checklist_producao.sql
+backend/migrations/backup_pre_refatoracao.sql
