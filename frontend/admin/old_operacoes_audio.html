@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Operações de Áudio | Admin</title>
+
+    <link rel="stylesheet" href="/css/app/admin/index.css">
+    <link rel="stylesheet" href="/css/app/admin/dashboard.css">
+    <link rel="stylesheet" href="/css/app/body.css">
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/admin/operacoes_audio.js" defer></script>
+</head>
+
+<body>
+    <main>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <a href="/admin/index.html" class="btn-xs">← Voltar</a>
+            <h1 style="margin: 0;">Gestão de Operações de Áudio</h1>
+        </div>
+
+        <div class="section-header">
+            <h2>Registros de Operação (Sessões)</h2>
+            <div class="toolbar">
+                <input type="text" id="search-operacoes" class="search-input"
+                    placeholder="Buscar por sala, operador ou data...">
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table" id="tb-operacoes">
+                <thead>
+                    <tr>
+                        <th style="width: 20px;"></th>
+                        <th class="sortable" data-sort="sala">Sala</th>
+                        <th class="sortable" data-sort="data">Data</th>
+                        <th class="sortable" data-sort="autor">1º Registro por</th>
+                        <th>Checklist?</th>
+                        <th class="sortable" data-sort="em_aberto">Em Aberto?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="empty-state">Carregando operações...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pag-operacoes" class="pagination-controls"></div>
+
+        <div class="section-header">
+            <h2>Relatórios de Anormalidades (Por Sala)</h2>
+            <div class="toolbar">
+                <input type="text" id="search-anormalidades" class="search-input" placeholder="Buscar anormalidade">
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table" id="tb-anormalidades">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"></th>
+                        <th>Local (Sala)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="2" class="empty-state">Carregando salas com anormalidades...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</body>
+
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+  !function(){try{var n=performance.getEntriesByType("navigation")[0];if(n&&0===n.transferSize&&"navigate"===n.type)location.reload()}catch(e){}}()</script>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Edição de Formulários | Admin</title>
+
+    <link rel="stylesheet" href="/css/app/admin/index.css">
+    <link rel="stylesheet" href="/css/app/admin/dashboard.css">
+    <link rel="stylesheet" href="/css/app/admin/form_edit.css">
+    <link rel="stylesheet" href="/css/app/body.css">
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/admin/form_edit.js" defer></script>
+</head>
+
+<body>
+    <main>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <a href="/admin/index.html" class="btn-xs">← Voltar</a>
+            <h1 style="margin: 0;">Edição de Formulários</h1>
+        </div>
+
+        <div class="cards">
+            <a href="#" class="card form-edit-card" id="card-edit-salas" data-entity="salas">
+                Edição de Locais
+                <div class="muted">Definir nomes e ordem dos locais</div>
+            </a>
+
+            <a href="#" class="card form-edit-card" id="card-edit-comissoes" data-entity="comissoes">
+                Edição de Comissões
+                <div class="muted">Configurar lista de comissões</div>
+            </a>
+
+            <a href="#" class="card form-edit-card" id="card-edit-sala-config" data-entity="sala_config">
+                Edição dos Itens de Verificação
+                <div class="muted">Gerenciar itens de checklist por local</div>
+            </a>
+        </div>
+
+        <div id="form-edit-section" class="form-edit-section">
+            <div id="form-edit-header" class="section-header hidden">
+                <h2 id="form-edit-title"></h2>
+            </div>
+
+            <div class="table-container">
+                <!-- Tabela Salas -->
+                <table id="tb-salas" class="data-table form-edit-table hidden" data-entity-key="salas">
+                    <thead>
+                        <tr>
+                            <th style="width: 32px;"></th>
+                            <th style="width: 80px;">Posição</th>
+                            <th>Nome do Local</th>
+                            <th style="width: 90px;">Ativa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="empty-state">Nenhum local carregado.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Tabela Comissões -->
+                <table id="tb-comissoes" class="data-table form-edit-table hidden" data-entity-key="comissoes">
+                    <thead>
+                        <tr>
+                            <th style="width: 32px;"></th>
+                            <th style="width: 80px;">Posição</th>
+                            <th>Nome da Comissão</th>
+                            <th style="width: 90px;">Ativa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="empty-state">Nenhuma comissão carregada.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Configuração de Itens por Sala -->
+                <div id="sala-config-section" class="hidden" data-entity-key="sala_config">
+                    <div class="sala-config-selector">
+                        <label for="sala-config-select">Selecione o local:</label>
+                        <select id="sala-config-select" class="sala-config-select">
+                            <option value="">Carregando locais...</option>
+                        </select>
+                    </div>
+
+                    <div id="sala-config-info" class="sala-config-info hidden">
+                        <p class="info-text">
+                            Configure quais itens de verificação aparecerão no formulário deste local.
+                            Você pode ativar/desativar itens, reordenar e adicionar novos.
+                        </p>
+                    </div>
+
+                    <table id="tb-sala-config-itens" class="data-table form-edit-table hidden" data-entity-key="sala_config">
+                        <thead>
+                            <tr>
+                                <th style="width: 32px;"></th>
+                                <th style="width: 80px;">Posição</th>
+                                <th>Nome do Item</th>
+                                <th style="width: 140px;">Tipo</th>
+                                <th style="width: 90px;">Ativo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="empty-state">Selecione um local para configurar.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="form-edit-actions" class="form-edit-actions hidden">
+                <button id="btn-form-edit-salvar" class="btn-page btn-primary" disabled>Salvar Alterações</button>
+                <button id="btn-form-edit-cancelar" class="btn-page">Cancelar</button>
+                <button id="btn-sala-config-aplicar-todas" class="btn-page btn-secondary hidden" disabled>Aplicar a Todos os Locais</button>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

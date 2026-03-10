@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+    !function () { try { var n = performance.getEntriesByType("navigation")[0]; if (n && 0 === n.transferSize && "navigate" === n.type) location.reload() } catch (e) { } }()</script>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <title>Registro de Operação de Áudio</title>
+  <meta content="noindex,nofollow" name="robots" />
+  <link rel="stylesheet" href="/css/app/forms/operacao/index.css?v=20260309">
+  <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+  <main>
+    <div class="card">
+      <div class="sessao-header-row">
+        <div id="info-operadores-sessao" class="muted" style="display:none;"></div>
+        <div id="info-modo-edicao" class="muted" style="display:none;"></div>
+      </div>
+
+      <h1>Registro de Operação de Áudio</h1>
+      <p class="subtitle">
+        Preencha os dados da operação de áudio realizada no local selecionado.
+      </p>
+
+      <form id="form-roa" novalidate>
+
+        <!-- Identificação Básica -->
+        <div class="grid">
+          <div>
+            <label class="required" for="sala_id">Local</label>
+            <select id="sala_id" name="sala_id" disabled required>
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Div oculta controlada por JS (mantida) -->
+        <div id="div-tipo-comissao" class="hidden">
+          <div class="grid">
+            <div>
+              <label class="required" for="comissao_id">Atividade Legislativa</label>
+              <select id="comissao_id" name="comissao_id">
+                <option value="">Selecione o tipo...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="required" for="nome_evento">Descrição do Evento</label>
+          <input id="nome_evento" name="nome_evento" placeholder="Ex.: 37ª reunião..." required type="text" />
+        </div>
+
+        <div>
+          <label class="required" for="responsavel_evento">Responsável pelo Evento</label>
+          <input id="responsavel_evento" name="responsavel_evento" required type="text"
+            placeholder="Ex.: Secretário da Reunião ou da Mesa" />
+        </div>
+
+        <!-- Datas e Horários -->
+        <div class="grid grid-4">
+          <div>
+            <label class="required" for="data_operacao">Data</label>
+            <input id="data_operacao" name="data_operacao" required type="date" />
+          </div>
+          <div>
+            <label for="horario_pauta">Horário da Pauta</label>
+            <input id="horario_pauta" name="horario_pauta" type="time" />
+          </div>
+          <div>
+            <label class="required" for="hora_inicio">Início do evento</label>
+            <input id="hora_inicio" name="hora_inicio" required type="time" />
+          </div>
+          <div>
+            <label for="hora_fim">Término do evento</label>
+            <input id="hora_fim" name="hora_fim" type="time" />
+          </div>
+        </div>
+
+        <!-- Evento Encerrado + Horários da Operação -->
+        <div class="grid grid-3">
+          <div>
+            <label>Evento Encerrado</label>
+            <div aria-label="Evento encerrado" class="field-inline" role="radiogroup">
+              <label>
+                <input checked name="evento_encerrado" type="radio" value="sim" />
+                Sim
+              </label>
+              <label>
+                <input name="evento_encerrado" type="radio" value="nao" />
+                Não
+              </label>
+            </div>
+          </div>
+          <div>
+            <label for="hora_entrada">Início da operação</label>
+            <input id="hora_entrada" name="hora_entrada" type="time" />
+          </div>
+          <div>
+            <label for="hora_saida">Término da operação</label>
+            <input id="hora_saida" name="hora_saida" type="time" />
+          </div>
+        </div>
+
+        <!-- Gravadores (Com estilo de Section Title igual checklist) -->
+        <div class="grid grid-2">
+          <div>
+            <div class="section-title">Trilha do Gravador 01</div>
+            <input id="usb_01" name="usb_01" type="text" />
+          </div>
+          <div>
+            <div class="section-title">Trilha do Gravador 02</div>
+            <input id="usb_02" name="usb_02" type="text" />
+          </div>
+        </div>
+
+        <!-- Observações -->
+        <div>
+          <div class="section-title">Observações</div>
+          <textarea id="observacoes" name="observacoes"></textarea>
+        </div>
+
+        <!-- Anormalidade -->
+        <div id="section-anormalidade">
+          <div class="section-title">Houve anormalidade?</div>
+          <div aria-labelledby="anormalidade-label" class="field-inline" role="radiogroup">
+            <span class="sr-only" id="anormalidade-label">Houve anormalidade</span>
+            <label>
+              <input checked name="houve_anormalidade" type="radio" value="nao" />
+              Não
+            </label>
+            <label>
+              <input name="houve_anormalidade" type="radio" value="sim" />
+              Sim
+            </label>
+          </div>
+          <p class="muted" style="margin-top: 8px; margin-bottom: 0;">
+            Se marcar “Sim”, após salvar este registro você será direcionado ao formulário de
+            <em>Registro de Anormalidade</em>.
+          </p>
+        </div>
+
+        <!-- Ações -->
+        <div class="actions">
+          <button type="button" id="btnVoltar" class="btn btn-secondary">Voltar</button>
+
+          <!-- Botões ocultos controlados por JS mantidos -->
+          <button type="button" id="btnCancelarEdicao" class="btn btn-outline-secondary" style="display: none;">
+            Cancelar Edição
+          </button>
+
+          <button type="button" id="btnSalvarRegistro" class="btn btn-primary">
+            Salvar registro
+          </button>
+
+          <button type="button" id="btnSalvarEdicao" class="btn btn-primary" style="display: none;">
+            Salvar Edição
+          </button>
+
+          <button type="button" id="btnEditarEntrada1" class="btn btn-outline-primary" style="display: none;">
+            Editar 1ª Entrada
+          </button>
+
+          <button type="button" id="btnEditarEntrada2" class="btn btn-outline-primary" style="display: none;">
+            Editar 2ª Entrada
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/session-autoload.js" defer></script>
+  <script type="module" src="/js/app/forms/operacao/modules/index.js" defer></script>
+  <script src="/js/manual_usuario.js?v=20260309"></script>
+</body>
+
+</html>

@@ -1,0 +1,41 @@
+/* ===== Sticky footer sem alterar o layout das páginas ===== */
+
+/* html é o "container" da página inteira */
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+/* body continua normal, só reservamos espaço pro footer */
+body {
+    margin: 0;
+    padding-bottom: 32px;
+    /* reserva o espaço do footer (mesma altura dele) */
+}
+
+/* Footer sempre encostado no final da página, não fixo na tela */
+.site-footer {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 32px;
+    /* ajuste se quiser mais alto/baixo */
+    background-color: #003b63;
+    /* azul Senado */
+    color: #ffffff;
+    font-size: 11px;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Conteúdo interno (texto centralizado) */
+.site-footer__inner {
+    max-width: 1200px;
+    padding: 0 16px;
+    text-align: center;
+    line-height: 1.4;
+}

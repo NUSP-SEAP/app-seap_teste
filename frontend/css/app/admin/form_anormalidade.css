@@ -1,0 +1,86 @@
+/* app/css/app/admin/form_anormalidade.css */
+
+/* Reutiliza base de formulário */
+@import url('/css/app/forms/operacao/anormalidade.css');
+
+/* Estilo Read-Only */
+body {
+    background-color: #e2e8f0;
+}
+
+.card {
+    border-top: 4px solid #ef4444;
+    /* Vermelho para indicar anormalidade/alerta */
+}
+
+.read-only-badge {
+    background: #ef4444;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    float: right;
+}
+
+/* Campos travados */
+input,
+select,
+textarea {
+    pointer-events: none;
+    background-color: #f8fafc !important;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+/* Esconder botões de rádio não selecionados para limpar a visualização */
+input[type="radio"]:not(:checked)+label {
+    color: #94a3b8;
+}
+
+input[type="radio"]:checked+label {
+    font-weight: bold;
+    color: #0f172a;
+}
+
+/* Esconder seções condicionais que não foram preenchidas */
+.hidden {
+    display: none !important;
+}
+
+/* Blocos de observação administrativa (Supervisor / Chefe de Serviço) */
+.admin-observacao-bloco {
+    margin-top: 20px;
+}
+
+.admin-observacao-bloco label {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.admin-observacao-input {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Ações (botões) dos blocos de observação */
+.admin-observacao-actions {
+    margin-top: 6px;
+    display: flex;
+    gap: 8px;
+}
+
+/* Por padrão os campos se comportam como read-only visualmente */
+.admin-observacao-input[readonly] {
+    background-color: #f9fafb;
+}
+
+/* Quando o JS permitir edição, usamos esta classe */
+.admin-observacao-input.admin-editavel {
+    background-color: #ffffff;
+    pointer-events: auto !important;
+    border-color: #2563eb;
+}

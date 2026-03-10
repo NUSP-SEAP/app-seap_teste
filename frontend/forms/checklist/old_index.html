@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Testes Diários</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <link rel="stylesheet" href="/css/app/forms/checklist/index.css">
+    <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+    <main>
+        <div class="card">
+            <h1>Testes Diários</h1>
+            <p class="muted">Preencha os dados e marque o status de cada item.</p>
+
+            <form id="form-checklist" novalidate>
+                <!-- Horários automáticos (campos ocultos) -->
+                <input type="hidden" id="hora_inicio_testes" name="hora_inicio_testes" />
+                <input type="hidden" id="hora_termino_testes" name="hora_termino_testes" />
+
+                <!-- 1) Identificação -->
+                <div class="section-title">1) Identificação</div>
+                <div class="grid grid-3">
+                    <div>
+                        <label class="required" for="data_operacao">Data da operação</label>
+                        <input type="date" id="data_operacao" name="data_operacao" required />
+                    </div>
+                    <div>
+                        <label class="required" for="sala_id">Local do Evento</label>
+                        <select id="sala_id" name="sala_id" disabled required>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="required" for="turno">Turno</label>
+                        <select id="turno" name="turno" required>
+                            <option value="">Selecione...</option>
+                            <option value="Matutino">Matutino</option>
+                            <option value="Vespertino">Vespertino</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 2) Itens do teste -->
+                <div class="section-title">2) Itens do teste</div>
+                <div class="checklist">
+                    <div class="check-item">
+                        <span class="check-item-label">Sistema Zoom</span>
+                        <label class="radio"><input type="radio" name="sistemaZoom" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="sistemaZoom" value="Falha"> Falha</label>
+                        <textarea id="falhaSistemaZoom" class="falha-descricao" name="falhaSistemaZoom"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">PC do Secretário</span>
+                        <label class="radio"><input type="radio" name="pcSecretario" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="pcSecretario" value="Falha"> Falha</label>
+                        <textarea id="falhaPcSecretario" class="falha-descricao" name="falhaPcSecretario"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Vídeowall</span>
+                        <label class="radio"><input type="radio" name="videowall" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="videowall" value="Falha"> Falha</label>
+                        <textarea id="falhaVideowall" class="falha-descricao" name="falhaVideowall"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Mic sem fio</span>
+                        <label class="radio"><input type="radio" name="micSemFio" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="micSemFio" value="Falha"> Falha</label>
+                        <textarea id="falhaMicSemFio" class="falha-descricao" name="falhaMicSemFio"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Mic de bancada</span>
+                        <label class="radio"><input type="radio" name="micBancada" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="micBancada" value="Falha"> Falha</label>
+                        <textarea id="falhaMicBancada" class="falha-descricao" name="falhaMicBancada"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Sinal TV Senado</span>
+                        <label class="radio"><input type="radio" name="sinalTVSenado" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="sinalTVSenado" value="Falha"> Falha</label>
+                        <textarea id="falhaSinalTVSenado" class="falha-descricao" name="falhaSinalTVSenado"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Tablet Presidente</span>
+                        <label class="radio"><input type="radio" name="tabletPresidente" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="tabletPresidente" value="Falha"> Falha</label>
+                        <textarea id="falhaTabletPresidente" class="falha-descricao" name="falhaTabletPresidente"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Tablet Secretária</span>
+                        <label class="radio"><input type="radio" name="tabletSecretaria" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="tabletSecretaria" value="Falha"> Falha</label>
+                        <textarea id="falhaTabletSecretaria" class="falha-descricao" name="falhaTabletSecretaria"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">Relógio (sincronismo)</span>
+                        <label class="radio"><input type="radio" name="relogio" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="relogio" value="Falha"> Falha</label>
+                        <textarea id="falhaRelogio" class="falha-descricao" name="falhaRelogio"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+
+                    <div class="check-item">
+                        <span class="check-item-label">VIP</span>
+                        <label class="radio"><input type="radio" name="vip" value="Ok" required> Ok</label>
+                        <label class="radio"><input type="radio" name="vip" value="Falha"> Falha</label>
+                        <textarea id="falhaVip" class="falha-descricao" name="falhaVip"
+                            placeholder="Descreva a falha."></textarea>
+                    </div>
+                </div>
+
+                <!-- 3) Recursos/Parâmetros -->
+                <div class="section-title">3) Recursos/Parâmetros</div>
+                <div class="grid grid-2">
+                    <div>
+                        <label for="usb_01">Trilha do Gravador 01</label>
+                        <input type="text" id="usb_01" name="usb_01" placeholder="USB / Tascam" />
+                    </div>
+                    <div>
+                        <label for="usb_02">Trilha do Gravador 02</label>
+                        <input type="text" id="usb_02" name="usb_02" placeholder="USB / Tascam" />
+                    </div>
+                </div>
+
+                <!-- 4) Observações -->
+                <div class="section-title">4) Observações</div>
+                <div>
+                    <label for="observacoes">Anotações gerais</label>
+                    <textarea id="observacoes" name="observacoes" placeholder="Opcional."></textarea>
+                </div>
+
+                <!-- Ações -->
+                <div class="actions">
+                    <a href="/home.html" class="btn btn-secondary">Voltar</a>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+
+                <!-- feedback -->
+                <div id="msg" class="card hidden" style="margin-top:12px;"></div>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/forms/checklist/index.js" defer></script>
+</body>
+
+</html>

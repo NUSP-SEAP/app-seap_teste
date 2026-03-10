@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+  !function(){try{var n=performance.getEntriesByType("navigation")[0];if(n&&0===n.transferSize&&"navigate"===n.type)location.reload()}catch(e){}}()</script>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Detalhe do Checklist | Admin</title>
+
+    <link rel="stylesheet" href="/css/app/forms/checklist/index.css">
+    <link rel="stylesheet" href="/css/app/admin/form_checklist.css?v=20260303">
+    <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+    <main>
+        <div class="card">
+            <span class="read-only-badge">Apenas Leitura</span>
+            <h1>Detalhe da Verificação de Plenário</h1>
+            <p class="subtitle" id="display-id" style="display:none"></p>
+
+            <form id="form-checklist-readonly">
+                <!-- 1) Identificação -->
+                <div class="section-title">1) Identificação</div>
+                <div class="grid grid-2">
+                    <div>
+                        <label for="data_operacao">Data</label>
+                        <input type="text" id="data_operacao" readonly />
+                    </div>
+                    <div>
+                        <label for="sala_nome">Local</label>
+                        <input type="text" id="sala_nome" readonly />
+                    </div>
+                </div>
+
+                <!-- Horários -->
+                <div class="grid grid-3" style="margin-top: 10px;">
+                    <div>
+                        <label for="hora_inicio">Início</label>
+                        <input type="text" id="hora_inicio" readonly />
+                    </div>
+                    <div>
+                        <label for="hora_termino">Término</label>
+                        <input type="text" id="hora_termino" readonly />
+                    </div>
+                    <div>
+                        <label for="duracao">Duração</label>
+                        <input type="text" id="duracao" readonly />
+                    </div>
+                </div>
+
+                <!-- 2) Itens Verificados -->
+                <div class="section-title">2) Itens Verificados</div>
+                <div id="checklist-items-container" class="checklist">
+                    <!-- Itens serão injetados aqui via JS -->
+                    <div class="muted">Carregando itens...</div>
+                </div>
+
+                <!-- 3) Observações -->
+                <div class="section-title">3) Observações</div>
+                <div>
+                    <label for="observacoes">Anotações gerais</label>
+                    <textarea id="observacoes" readonly></textarea>
+                </div>
+
+                <!-- 4) Responsável -->
+                <div class="section-title">4) Responsável</div>
+                <div>
+                    <label for="operador_nome">Verificado por</label>
+                    <input type="text" id="operador_nome" readonly />
+                </div>
+
+                <!-- Ações -->
+                <div class="actions" style="justify-content: space-between; margin-top: 30px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.close()">Fechar Aba</button>
+                    <button type="button" class="btn btn-primary" disabled title="Funcionalidade futura">Imprimir
+                        🖨️</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/admin/form_checklist.js" defer></script>
+</body>
+
+</html>

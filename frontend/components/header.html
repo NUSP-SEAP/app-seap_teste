@@ -1,0 +1,127 @@
+<header class="site-header">
+    <div class="site-header__inner">
+
+        <!-- Logo à esquerda -->
+        <div class="logo-container">
+            <img class="site-logo" src="/imgs/header-senado.png" alt="Logo Senado Federal">
+        </div>
+
+        <!-- Área da direita: foto + saudação + logout -->
+        <div class="site-header__right">
+            <img id="user-avatar" class="user-avatar" src="" alt="" style="display: none;" />
+            <span id="user-greeting" style="display: none;"></span>
+            <a id="btn-logout" href="#" class="btn-logout" style="display: none;">Sair</a>
+        </div>
+
+    </div>
+</header>
+
+<style>
+    /* ====== Header com faixas azul / amarelo / verde ====== */
+    .site-header {
+        width: 100%;
+        background: linear-gradient(to bottom,
+                #003B63 0%,
+                /* azul */
+                #003B63 86%,
+                #F2C94C 86%,
+                /* amarelo */
+                #F2C94C 93%,
+                #009739 93%,
+                /* verde */
+                #009739 100%);
+        color: #ffffff;
+    }
+
+    .site-header__inner {
+        /* ocupa a largura toda, com um pequeno padding nas laterais */
+        width: 100%;
+        margin: 0;
+        padding: 0 16px;
+        box-sizing: border-box;
+
+        display: flex;
+        align-items: center;
+        /* centraliza verticalmente na faixa azul */
+        justify-content: space-between;
+        /* logo grudada à esquerda, usuário à direita */
+
+        height: 54px;
+        /* altura da faixa azul */
+    }
+
+    /* ====== Logo à esquerda ====== */
+    .logo-container {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+    }
+
+    .site-logo {
+        height: 26px;
+        /* ajusta se quiser maior/menor */
+        width: auto;
+        max-width: 100%;
+        object-fit: contain;
+    }
+
+    @media (min-width: 1024px) {
+        .site-logo {
+            height: 45px;
+        }
+    }
+
+    /* ====== Área direita (usuário + botão sair) ====== */
+    .site-header__right {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        flex: 0 0 auto;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        flex-shrink: 0;
+    }
+
+    #user-greeting {
+        opacity: .95;
+        font-size: 14px;
+        font-weight: 700;
+        color: #ffffff;
+        margin-right: 4px;
+        white-space: nowrap;
+    }
+
+    /* ====== Botão Sair com tonalidade avermelhada ====== */
+    .btn-logout {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+
+        border: 1px solid #FCA5A5;
+        /* borda avermelhada clara */
+        background: #7F1D1D;
+        /* fundo vinho/avermelhado */
+        color: #FEE2E2;
+        /* texto rosado claro */
+
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+        transition: background .15s ease, border-color .15s ease, transform .1s ease;
+    }
+
+    .btn-logout:hover {
+        background: #B91C1C;
+        /* vermelho mais forte no hover */
+        border-color: #F87171;
+        transform: translateY(-1px);
+    }
+</style>

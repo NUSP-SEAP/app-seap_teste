@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+  !function(){try{var n=performance.getEntriesByType("navigation")[0];if(n&&0===n.transferSize&&"navigate"===n.type)location.reload()}catch(e){}}()</script>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Home | Senado NUSP</title>
+
+    <link rel="stylesheet" href="/css/app/home.css">
+    <link rel="stylesheet" href="/css/app/admin/dashboard.css">
+    <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+    <main>
+        <h1>Página Principal</h1>
+        <div class="grid">
+            <a class="card" href="/forms/checklist/"><strong>Formulário de Verificação de Plenários</strong><br /><span
+                    class="muted">Abrir</span></a>
+            <a class="card" href="/forms/operacao/"><strong>Registro de Operação de Áudio</strong><br /><span
+                    class="muted">Abrir</span></a>
+            <a id="btn-admin-dashboard" class="card" href="/admin/index.html"
+                style="display: none; border-color: #cbd5e1; background-color: #f8fafc;">
+                <strong style="color: #475569;">Painel Administrativo</strong><br />
+                <span class="muted">Voltar para Admin</span>
+            </a>
+        </div>
+
+        <!-- Tabela de Verificação de Salas (visível somente para operadores) -->
+        <div id="section-meus-checklists" style="display: none;">
+            <div class="section-header">
+                <h2>Verificação de Salas</h2>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="tb-meus-checklists">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="sala" data-column="sala">Sala</th>
+                            <th class="sortable" data-sort="data" data-column="data">Data</th>
+                            <th class="sortable" data-sort="qtde_ok" data-column="qtde_ok">Qtde. OK</th>
+                            <th class="sortable" data-sort="qtde_falha" data-column="qtde_falha">Qtde. Falha</th>
+                            <th data-column="acao" data-no-filter="1">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="empty-state">Carregando verificações...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="pag-meus-checklists" class="pagination-controls"></div>
+        </div>
+
+        <!-- Tabela de Registros de Operação de Áudio (visível somente para operadores) -->
+        <div id="section-minhas-operacoes" style="display: none;">
+            <div class="section-header">
+                <h2>Registros de Operação de Áudio</h2>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="tb-minhas-operacoes">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="sala" data-column="sala">Sala</th>
+                            <th class="sortable" data-sort="data" data-column="data">Data</th>
+                            <th class="sortable" data-sort="inicio_operacao" data-column="inicio_operacao">Início Operação</th>
+                            <th class="sortable" data-sort="fim_operacao" data-column="fim_operacao">Fim Operação</th>
+                            <th class="sortable" data-sort="anormalidade" data-column="anormalidade">Anormalidade?</th>
+                            <th data-column="acao" data-no-filter="1">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="empty-state">Carregando operações...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="pag-minhas-operacoes" class="pagination-controls"></div>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/admin/table_filters.js" defer></script>
+    <script src="/js/app/admin/report_pdf.js" defer></script>
+    <script src="/js/app/home.js" defer></script>
+    <script src="/js/app/home_checklists.js" defer></script>
+    <script src="/js/app/home_operacoes.js?v=20260309" defer></script>
+    <script src="/js/manual_usuario.js?v=20260309"></script>
+</body>
+
+</html>

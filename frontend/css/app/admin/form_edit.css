@@ -1,0 +1,181 @@
+/* app/css/app/admin/form_edit.css */
+
+.form-edit-section {
+    margin-top: 32px;
+}
+
+/* Cards da tela */
+.form-edit-card {
+    margin-right: 12px;
+}
+
+.form-edit-card.card-active {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25),
+        0 6px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* Tabelas de edição */
+.form-edit-table th,
+.form-edit-table td {
+    vertical-align: middle;
+}
+
+.form-edit-table .drag-cell {
+    text-align: center;
+    cursor: grab;
+    width: 32px;
+}
+
+.form-edit-table .drag-cell span {
+    user-select: none;
+    font-size: 1.1rem;
+    color: #94a3b8;
+}
+
+.form-edit-row-blank .drag-cell span,
+.form-edit-row-blank .position-cell {
+    color: #cbd5e1;
+}
+
+.form-edit-table .position-cell {
+    text-align: center;
+    width: 80px;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+}
+
+.form-edit-table .name-cell {
+    cursor: default;
+}
+
+/* Input de edição inline */
+.form-edit-input-name {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 0.9rem;
+}
+
+/* Checkbox Ativo/Ativa */
+.form-edit-checkbox {
+    display: flex;
+    justify-content: center;
+}
+
+/* Linhas desativadas */
+.form-edit-row-inactive td {
+    color: #9ca3af;
+}
+
+/* Linha que foi reordenada recentemente */
+.form-edit-row-moved {
+    background-color: #e0f2fe;
+    /* azul bem claro */
+    transition: background-color 0.4s ease;
+}
+
+.form-edit-row-inactive .name-cell {
+    text-decoration: line-through;
+}
+
+/* Rodapé com botões Salvar / Cancelar */
+.form-edit-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.form-edit-actions .btn-page {
+    min-width: 150px;
+}
+
+/* Botão principal (Salvar) – reusa estilo do novo_admin.css */
+.form-edit-actions .btn-primary {
+    background: #0b5ed7;
+    color: #fff;
+}
+
+.form-edit-actions .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Configuração de Itens por Sala */
+.sala-config-selector {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sala-config-selector label {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.95rem;
+}
+
+.sala-config-select {
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background-color: #fff;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.sala-config-select:hover:not(:disabled) {
+    border-color: #94a3b8;
+}
+
+.sala-config-select:focus {
+    outline: none;
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+}
+
+.sala-config-select:disabled {
+    background-color: #f1f5f9;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.sala-config-info {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background-color: #f0f9ff;
+    border-left: 4px solid #0284c7;
+    border-radius: 4px;
+}
+
+.sala-config-info .info-text {
+    margin: 0;
+    color: #0c4a6e;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Coluna Obrigatório */
+.form-edit-table .obrigatorio-cell {
+    text-align: center;
+    width: 110px;
+}
+
+/* Botão Aplicar a Todas as Salas */
+.btn-sala-config-aplicar-todas {
+    background: #059669;
+    color: #fff;
+}
+
+.btn-sala-config-aplicar-todas:hover:not(:disabled) {
+    background: #047857;
+}
+
+.btn-sala-config-aplicar-todas:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #9ca3af;
+}

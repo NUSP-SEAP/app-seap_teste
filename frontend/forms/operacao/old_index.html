@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <title>Registro de Operação de Áudio</title>
+  <meta content="noindex,nofollow" name="robots" />
+  <link rel="stylesheet" href="/css/app/forms/operacao/index.css">
+  <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+  <main>
+    <div class="card">
+      <div class="sessao-header-row">
+        <div id="info-operadores-sessao" class="muted" style="display:none;"></div>
+        <div id="info-modo-edicao" class="muted" style="display:none; text-align: right;"></div>
+      </div>
+
+      <h1>Registro de Operação de Áudio</h1>
+      <p class="subtitle">
+        Preencha os dados da operação de áudio realizada na sala selecionada.
+      </p>
+
+      <form id="form-roa" novalidate>
+
+        <div class="grid">
+          <div>
+            <label class="section-title required" for="sala_id">Local do Evento</label>
+            <select id="sala_id" name="sala_id" disabled required>
+              <option value="">Carregando...</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="div-tipo-comissao" class="hidden" style="margin-top: 12px;">
+          <div class="grid">
+            <div>
+              <label class="section-title required" for="comissao_id">Tipo</label>
+              <select id="comissao_id" name="comissao_id">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <label class="section-title required" for="nome_evento">Descrição do Evento</label>
+          <input id="nome_evento" name="nome_evento" placeholder="Ex.: 37ª reunião..." required type="text" />
+        </div>
+
+        <div class="grid grid-4" style="margin-top: 12px;">
+          <div>
+            <label class="section-title required" for="data_operacao">Data da operação</label>
+            <input id="data_operacao" name="data_operacao" required type="date" />
+          </div>
+          <div>
+            <label class="section-title" for="horario_pauta">Horário da Pauta</label>
+            <input id="horario_pauta" name="horario_pauta" type="time" />
+          </div>
+          <div>
+            <label class="section-title required" for="hora_inicio">Hora de início</label>
+            <input id="hora_inicio" name="hora_inicio" required type="time" />
+          </div>
+          <div>
+            <label class="section-title required" for="hora_fim">Hora do término</label>
+            <input id="hora_fim" name="hora_fim" required type="time" />
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top: 12px;">
+          <div>
+            <label class="section-title" for="usb_01">Trilha do Gravador 01</label>
+            <input id="usb_01" name="usb_01" type="text" />
+          </div>
+          <div>
+            <label class="section-title" for="usb_02">Trilha do Gravador 02</label>
+            <input id="usb_02" name="usb_02" type="text" />
+          </div>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <label class="section-title" for="observacoes">Anotações Gerais</label>
+          <textarea id="observacoes" name="observacoes"
+            placeholder="Use este campo para registrar detalhes relevantes da operação."></textarea>
+        </div>
+
+        <div id="section-anormalidade" style="margin-top: 12px;">
+          <div class="section-title">Houve anormalidade?</div>
+          <div aria-labelledby="anormalidade-label" class="field-inline" role="radiogroup">
+            <span class="sr-only" id="anormalidade-label">Houve anormalidade</span>
+            <label class="field-inline">
+              <input checked name="houve_anormalidade" type="radio" value="nao" />
+              Não
+            </label>
+            <label class="field-inline">
+              <input name="houve_anormalidade" type="radio" value="sim" />
+              Sim
+            </label>
+          </div>
+          <p class="muted">
+            Se marcar “Sim”, após salvar este registro você será direcionado ao formulário de
+            <em>Registro de Anormalidade</em>.
+          </p>
+        </div>
+
+        <div style="margin-top: 12px;">
+          <label class="section-title" for="responsavel_evento">Responsável pelo Evento</label>
+          <input id="responsavel_evento" name="responsavel_evento" type="text" />
+        </div>
+
+        <div class="actions" style="margin-top: 24px;">
+          <button type="button" id="btnVoltar" class="btn btn-secondary">
+            Voltar
+          </button>
+
+          <button type="button" id="btnCancelarEdicao" class="btn btn-outline-secondary" style="display: none;">
+            Cancelar Edição
+          </button>
+
+          <button type="button" id="btnLimpar" class="btn btn-outline-secondary">
+            Limpar
+          </button>
+
+          <button type="button" id="btnSalvarRegistro" class="btn btn-primary">
+            Salvar registro
+          </button>
+
+          <button type="button" id="btnSalvarEdicao" class="btn btn-primary" style="display: none;">
+            Salvar Edição
+          </button>
+
+          <button type="button" id="btnEditarEntrada1" class="btn btn-outline-primary" style="display: none;">
+            Editar 1ª Entrada
+          </button>
+
+          <button type="button" id="btnEditarEntrada2" class="btn btn-outline-primary" style="display: none;">
+            Editar 2ª Entrada
+          </button>
+
+          <button type="button" id="btnFinalizarSessao" class="btn btn-danger">
+            Finalizar Registro da Sala/Operação
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/session-autoload.js" defer></script>
+  <script type="module" src="/js/app/forms/operacao/modules/index.js" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,644 @@
+/* app/css/app/admin/dashboard.css */
+
+:root {
+    --table-header-bg: #f1f5f9;
+    --table-border: #e2e8f0;
+    --row-hover: #f8fafc;
+    --accordion-bg: #eff6ff;
+    /* Azul bem claro para a área expandida */
+}
+
+/* --- Layout Geral --- */
+.section-header {
+    margin-top: 32px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    /* Permite quebrar linha em mobile */
+    gap: 12px;
+}
+
+.section-header h2 {
+    font-size: 1.25rem;
+    color: #1e293b;
+    margin: 0;
+}
+
+/* --- Barra de Ferramentas (Busca) --- */
+.toolbar {
+    display: flex;
+    gap: 10px;
+}
+
+.search-input {
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    width: 250px;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* --- Tabelas de Dados --- */
+.table-container {
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid var(--table-border);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+table.data-table th,
+table.data-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--table-border);
+}
+
+table.data-table th {
+    background-color: var(--table-header-bg);
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+    user-select: none;
+    /* Evita selecionar texto ao clicar repetidamente */
+}
+
+/* Cabeçalhos Ordenáveis */
+th.sortable {
+    cursor: pointer;
+    position: relative;
+    padding-right: 24px;
+    /* Espaço para a seta */
+}
+
+th.sortable:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+
+/* Ícones de Ordenação (Pseudo-elementos) */
+th.sortable::after {
+    content: '↕';
+    position: absolute;
+    right: 8px;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+th.sortable.asc::after {
+    content: '↑';
+    color: #2563eb;
+    opacity: 1;
+}
+
+th.sortable.desc::after {
+    content: '↓';
+    color: #2563eb;
+    opacity: 1;
+}
+
+table.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* --- Accordion (Linhas Expansíveis) --- */
+tr.accordion-parent {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+tr.accordion-parent:hover {
+    background-color: var(--row-hover);
+}
+
+/* Ícone de seta (será controlado via JS adicionando classe 'open') */
+.toggle-icon {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    margin-right: 8px;
+    color: #94a3b8;
+}
+
+tr.accordion-parent.open .toggle-icon {
+    transform: rotate(90deg);
+    color: #2563eb;
+}
+
+tr.accordion-parent.open {
+    background-color: #f1f5f9;
+    /* Destaca a linha pai quando aberta */
+    font-weight: 600;
+}
+
+/* Linha filha (conteúdo expandido) */
+tr.accordion-child {
+    background-color: var(--accordion-bg);
+    display: none;
+    /* Oculto por padrão */
+}
+
+tr.accordion-child.visible {
+    display: table-row;
+    /* Visível quando JS ativa */
+}
+
+tr.accordion-child td {
+    padding: 0;
+    /* Remove padding da célula container para a tabela interna fluir bem */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+/* Tabela Interna (Sub-tabela) */
+.sub-table-wrap {
+    padding: 16px;
+}
+
+table.sub-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    /* Borda azulada */
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+table.sub-table th {
+    background-color: #dbeafe;
+    color: #1e40af;
+    padding: 8px 12px;
+    font-weight: 600;
+    border-bottom: 1px solid #bfdbfe;
+}
+
+table.sub-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eff6ff;
+    color: #334155;
+}
+
+table.sub-table tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Botões dentro da tabela */
+.btn-xs {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    text-decoration: none;
+    background-color: #fff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    cursor: pointer;
+}
+
+.btn-xs:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.btn-xs.btn-anom-sim {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+    font-weight: bold;
+}
+
+.btn-xs.btn-anom-sim:hover {
+    background-color: #fee2e2;
+    border-color: #f87171;
+}
+
+/* Empty State */
+.empty-state {
+    padding: 32px;
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+}
+
+/* Helper classes para status */
+.text-green {
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.text-red {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.text-blue {
+    color: #2563eb;
+}
+
+.text-gray {
+    color: #94a3b8;
+}
+
+.bold {
+    font-weight: 700;
+}
+
+.table-hover tbody tr:hover {
+    cursor: pointer;
+    background-color: #e2e8f0;
+}
+
+/* --- Paginação --- */
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.pagination-controls .pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-controls .pagination-right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Container dos controles (<< < [input] Ir > >>) */
+.pagination-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Input numérico de página */
+.page-input {
+    width: 60px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.page-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Botões de paginação */
+.btn-page {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #334155;
+}
+
+.btn-page:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8fafc;
+}
+
+/* Botões de paginação */
+.btn-page {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #334155;
+}
+
+.btn-page:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.btn-page:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8fafc;
+}
+
+/* Wrapper do painel de operações (Pandas + Streamlit) */
+.pandas-frame-wrapper {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #ffffff;
+    min-height: 600px;
+}
+
+/* Iframe que embute o painel de operações */
+#frame-operacoes-audio {
+    width: 100%;
+    min-height: 600px;
+    border: none;
+}
+
+/* --- Filtro de Período (Admin Dashboard) --- */
+
+.filter-summary {
+    margin-left: 8px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.filter-summary.active {
+    font-weight: 600;
+    color: #1d4ed8;
+}
+
+.periodo-panel {
+    margin-top: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background-color: #f8fafc;
+}
+
+.periodo-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.periodo-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.periodo-section h4 {
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+}
+
+.periodo-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.periodo-row input[type="number"],
+.periodo-row input[type="date"],
+.periodo-row select {
+    max-width: 180px;
+}
+
+.periodo-week-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.week-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background-color: #f1f5f9;
+    font-size: 0.8rem;
+}
+
+.week-pill input {
+    margin: 0;
+}
+
+.periodo-ranges-list {
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.periodo-range-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed #e2e8f0;
+    font-size: 0.85rem;
+}
+
+.periodo-range-row:last-child {
+    border-bottom: none;
+}
+
+.periodo-panel-footer {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.periodo-hint {
+    margin: 4px 0 0;
+    font-size: 0.78rem;
+    color: #94a3b8;
+}
+
+.periodo-count {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.periodo-spacer {
+    flex: 1;
+}
+
+/* Botão mini para remover faixas */
+.btn-remove-range {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+/* --- Filtro de Período (linha simples com checkbox + inputs) --- */
+
+/* Classe utilitária (se já existir em outro lugar, pode manter a mesma) */
+.hidden {
+    display: none !important;
+}
+
+/* Wrapper abaixo do título + busca */
+.date-filter-wrapper {
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+/* Linha com checkbox + controles */
+.date-filter-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.date-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.date-filter-toggle input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Controles (anos, meses, semanas, botões) */
+.date-filter-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.date-filter-inline.hidden {
+    display: none !important;
+}
+
+/* Inputs com visual parecido com a caixa de busca */
+.date-filter-input {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    min-width: 190px;
+    background-color: #ffffff;
+}
+
+.date-filter-input::placeholder {
+    color: #94a3b8;
+}
+
+/* Dropdown com visual parecido com os botões de paginação */
+.date-filter-select {
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    min-width: 220px;
+    background-color: #ffffff;
+    color: #334155;
+}
+
+.date-filter-select:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+}
+
+/* Botões de filtro reaproveitam o estilo de .btn-page */
+.date-filter-button {
+    font-size: 0.85rem;
+}
+
+/* Bloco de “Períodos selecionados” */
+.date-filter-periods {
+    margin-top: 4px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+}
+
+.date-filter-periods.hidden {
+    display: none !important;
+}
+
+.periodo-selected-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 4px;
+}
+
+/* =====================================================================
+   Dropdown de extensão do relatório (.pdf/.docx)
+   - visual idêntico ao botão .btn-page
+   ===================================================================== */
+
+.report-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-format-select {
+    /* Mesma "cara" do .btn-page */
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    background-color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #334155;
+
+    /* Garantir altura consistente */
+    box-sizing: border-box;
+    line-height: 1.2;
+
+    /* Remove estilo nativo do select pra bater com o botão */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+
+    /* Seta do dropdown (opcional, mas ajuda a ficar “com cara de select”) */
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23334155' d='M6 8 0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px 6px;
+
+    /* Se o select herdar estilos de input, força alinhamento de texto */
+    text-align: left;
+}
+
+/* Se em alguma tela o select estiver como "page-input report-format-select",
+   isso remove o width/text-align do input e mantém o estilo de select */
+.page-input.report-format-select {
+    width: auto;
+    text-align: left;
+}
+
+.report-format-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}

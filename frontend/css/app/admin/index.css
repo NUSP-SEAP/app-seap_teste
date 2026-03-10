@@ -1,0 +1,38 @@
+html[data-auth="pending"] {
+    visibility: hidden
+}
+
+body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    margin: 0;
+    background: #f6f7f9;
+    color: #0f172a;
+}
+
+main {
+    max-width: 980px;
+    margin: 24px auto;
+    padding: 0 16px;
+}
+
+.muted {
+    color: #475569;
+    font-size: 14px;
+}
+
+.cards {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.card {
+    display: block;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #0f172a;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(2, 6, 23, .06);
+}

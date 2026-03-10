@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+        !function () { try { var n = performance.getEntriesByType("navigation")[0]; if (n && 0 === n.transferSize && "navigate" === n.type) location.reload() } catch (e) { } }()</script>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Detalhe da Operação | Operador</title>
+
+    <link rel="stylesheet" href="/css/app/forms/operacao/index.css?v=20260309">
+    <link rel="stylesheet" href="/css/app/body.css">
+
+    <style>
+        body {
+            background-color: #e2e8f0;
+        }
+
+        .card {
+            margin-top: 20px;
+            border-top: 4px solid #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="card">
+            <h1>Detalhe do Registro de Operação</h1>
+
+            <form id="form-roa-readonly" novalidate>
+                <!-- Local -->
+                <div class="grid">
+                    <div>
+                        <label class="required" for="sala_nome">Local</label>
+                        <input id="sala_nome" type="text" readonly />
+                        <select id="sala_id_edit" class="hidden" disabled>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Atividade Legislativa -->
+                <div class="grid" id="div-atividade-legislativa">
+                    <div>
+                        <label class="required" for="atividade_legislativa">Atividade Legislativa</label>
+                        <input id="atividade_legislativa" type="text" readonly />
+                        <select id="comissao_id_edit" class="hidden" disabled>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Descrição do Evento -->
+                <div>
+                    <label class="required" for="nome_evento">Descrição do Evento</label>
+                    <input id="nome_evento" type="text" readonly />
+                </div>
+
+                <!-- Responsável pelo Evento -->
+                <div>
+                    <label class="required" for="responsavel_evento">Responsável pelo Evento</label>
+                    <input id="responsavel_evento" type="text" readonly />
+                </div>
+
+                <!-- Data e horários do evento -->
+                <div class="grid grid-4">
+                    <div>
+                        <label class="required" for="data_operacao">Data</label>
+                        <input id="data_operacao" type="date" readonly />
+                    </div>
+                    <div>
+                        <label for="horario_pauta">Horário da Pauta</label>
+                        <input id="horario_pauta" type="time" readonly />
+                    </div>
+                    <div>
+                        <label class="required" for="hora_inicio">Início do evento</label>
+                        <input id="hora_inicio" type="time" readonly />
+                    </div>
+                    <div>
+                        <label for="hora_fim">Término do evento</label>
+                        <input id="hora_fim" type="time" readonly />
+                    </div>
+                </div>
+
+                <!-- Evento Encerrado + Horários da Operação -->
+                <div class="grid grid-3">
+                    <div>
+                        <div class="section-title">Evento Encerrado</div>
+                        <div aria-label="Evento encerrado" class="field-inline" role="radiogroup">
+                            <label><input disabled name="evento_encerrado" type="radio" value="sim" /> Sim</label>
+                            <label><input disabled name="evento_encerrado" type="radio" value="nao" /> Não</label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="hora_entrada">Início da operação</label>
+                        <input id="hora_entrada" type="time" readonly />
+                    </div>
+                    <div>
+                        <label for="hora_saida">Término da operação</label>
+                        <input id="hora_saida" type="time" readonly />
+                    </div>
+                </div>
+
+                <!-- Trilha dos Gravadores -->
+                <div class="grid grid-2">
+                    <div>
+                        <div class="section-title" id="section-title-usb01">Trilha do Gravador 01</div>
+                        <input id="usb_01" type="text" readonly />
+                    </div>
+                    <div>
+                        <div class="section-title" id="section-title-usb02">Trilha do Gravador 02</div>
+                        <input id="usb_02" type="text" readonly />
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <div>
+                    <div class="section-title" id="section-title-obs">Observações</div>
+                    <textarea id="observacoes" readonly></textarea>
+                </div>
+
+                <!-- Houve anormalidade? -->
+                <div id="section-anormalidade">
+                    <div class="section-title">Houve anormalidade?</div>
+                    <div aria-labelledby="anormalidade-label" class="field-inline" role="radiogroup">
+                        <span class="sr-only" id="anormalidade-label">Houve anormalidade</span>
+                        <label>
+                            <input id="houve_anormalidade_nao" name="houve_anormalidade" type="radio" value="nao"
+                                disabled />
+                            Não
+                        </label>
+                        <label>
+                            <input id="houve_anormalidade_sim" name="houve_anormalidade" type="radio" value="sim"
+                                disabled />
+                            Sim
+                        </label>
+                    </div>
+                    <p id="anormalidade-nota" class="muted hidden" style="margin-top:6px;">
+                        Se marcar "Sim", após editar este registro você será direcionado ao formulário de <em>Registro
+                            de Anormalidade</em>.
+                    </p>
+                </div>
+
+                <!-- Ações -->
+                <div class="actions" style="justify-content: space-between; margin-top: 30px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.close()">Fechar Aba</button>
+                    <div id="edit-actions" style="display: flex; gap: 10px;">
+                        <button type="button" id="btn-editar" class="btn btn-primary">Editar</button>
+                        <button type="button" id="btn-cancelar" class="btn btn-secondary hidden">Cancelar</button>
+                        <button type="button" id="btn-salvar" class="btn btn-primary hidden">Salvar Edição</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js?v=20260305"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/forms/operacao/detalhe.js?v=20260309" defer></script>
+    <script src="/js/manual_usuario.js?v=20260309"></script>
+</body>
+
+</html>

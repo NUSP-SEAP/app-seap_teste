@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+  !function(){try{var n=performance.getEntriesByType("navigation")[0];if(n&&0===n.transferSize&&"navigate"===n.type)location.reload()}catch(e){}}()</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Verificação de Plenários</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <link rel="stylesheet" href="/css/app/forms/checklist/index.css">
+    <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+    <main>
+        <div class="card">
+            <h1>Verificação de Plenários</h1>
+
+            <form id="form-checklist" novalidate onsubmit="return false;">
+
+                <div id="step-setup">
+                    <p class="muted">Selecione o local para iniciar a verificação.</p>
+
+                    <div class="grid grid-2">
+                        <div>
+                            <label class="required" for="data_operacao">Data</label>
+                            <input type="date" id="data_operacao" name="data_operacao" required />
+                        </div>
+                        <div>
+                            <label class="required" for="sala_id">Local</label>
+                            <select id="sala_id" name="sala_id" disabled required>
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="actions" style="justify-content: space-between; margin-top: 20px;">
+                        <a href="/home.html" class="btn btn-secondary">← Voltar</a>
+
+                        <button type="button" id="btn-start-wizard" class="btn btn-primary" disabled>
+                            Avançar →
+                        </button>
+                    </div>
+                </div>
+
+                <div id="step-wizard" class="hidden">
+                    <div
+                        style="background: #eff6ff; padding: 10px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #dbeafe;">
+                        <span
+                            style="color: #64748b; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;">Verificando:</span>
+                        <div id="wizard-sala-nome" style="font-size: 1.2rem; font-weight: 600; color: #1e293b;">--</div>
+                    </div>
+
+                    <div id="wizard-container" class="checklist-wizard-container" style="min-height: 200px;">
+                    </div>
+
+                    <div class="actions wizard-actions" style="justify-content: space-between; margin-top: 20px;">
+                        <button type="button" id="btn-wizard-prev" class="btn btn-secondary">
+                            ← Voltar
+                        </button>
+
+                        <button type="button" id="btn-wizard-next" class="btn btn-primary" disabled>
+                            Confirmar e Avançar →
+                        </button>
+                    </div>
+
+                    <div class="wizard-progress"
+                        style="text-align: center; margin-top: 15px; color: #94a3b8; font-size: 0.9rem;">
+                        Item <span id="wizard-current-idx">1</span> de <span id="wizard-total">--</span>
+                    </div>
+                </div>
+
+                <div id="step-finish" class="hidden">
+                    <div class="section-title">Observações</div>
+                    <textarea id="observacoes" name="observacoes"></textarea>
+
+                    <div class="actions" style="justify-content: space-between; margin-top: 20px;">
+                        <button type="button" id="btn-finish-back" class="btn btn-secondary">
+                            ← Voltar
+                        </button>
+
+                        <button type="button" id="btn-save-all" class="btn btn-primary">
+                            Salvar Verificação
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/forms/checklist/index.js" defer></script>
+    <script src="/js/manual_usuario.js?v=20260309"></script>
+</body>
+
+</html>

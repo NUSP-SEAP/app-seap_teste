@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+  !function(){try{var n=performance.getEntriesByType("navigation")[0];if(n&&0===n.transferSize&&"navigate"===n.type)location.reload()}catch(e){}}()</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registro de Anormalidade na Operação de Áudio</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="/css/app/forms/operacao/anormalidade.css">
+  <link rel="stylesheet" href="/css/app/body.css">
+</head>
+
+<body>
+  <main>
+    <div class="card">
+      <h1>Registro de Anormalidade</h1>
+      <p class="muted">Preencha as informações referentes à ocorrência. Campos marcados com * são obrigatórios.</p>
+      <p class="muted" id="registro-ref" style="margin-top:-6px; font-weight:500;"></p>
+
+      <form id="form-raoa" novalidate>
+        <input type="hidden" id="registro_id" name="registro_id" />
+        <input type="hidden" id="entrada_id" name="entrada_id" />
+
+        <div class="section-title">1) Dados do Evento</div>
+        <div class="grid grid-3">
+          <div>
+            <label>Data</label>
+            <input type="date" id="data" name="data" readonly class="readonly-input" />
+          </div>
+          <div>
+            <label>Local do evento</label>
+            <select id="sala_id_display" disabled>
+              <option value="">Carregando...</option>
+            </select>
+            <input type="hidden" id="sala_id" name="sala_id" />
+          </div>
+          <div>
+            <label>Nome do evento</label>
+            <input type="text" id="nome_evento_display" readonly class="readonly-input" />
+            <input type="hidden" id="nome_evento" name="nome_evento" />
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top: 15px;">2) Responsáveis</div>
+        <div>
+          <label class="required" for="responsavel_evento">Nome do Secretário da Comissão, da Mesa ou do responsável
+            pelo evento</label>
+          <input type="text" id="responsavel_evento" name="responsavel_evento" required
+            placeholder="Ex: Secretário da Mesa, Assessor da Comissão..." />
+        </div>
+
+        <div class="section-title" style="margin-top: 15px;">3) Detalhes da Anormalidade</div>
+
+        <div>
+          <label class="required">Horário do início da anormalidade</label>
+          <input type="time" id="hora_inicio_anormalidade" name="hora_inicio_anormalidade" required
+            style="max-width: 150px;" />
+        </div>
+
+        <div>
+          <label class="required">Descrição da anormalidade</label>
+          <textarea id="descricao_anormalidade" name="descricao_anormalidade" required
+            placeholder="Descreva resumidamente o que aconteceu..."></textarea>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <div class="section-title">Houve suspensão, adiamento ou cancelamento do evento?</div>
+            <div class="field-inline">
+              <label><input type="radio" name="houve_prejuizo" value="nao" checked /> Não</label>
+              <label><input type="radio" name="houve_prejuizo" value="sim" /> Sim</label>
+            </div>
+          </div>
+          <div id="grp_descricao_prejuizo" class="hidden">
+            <label class="required">Duração do adiamento ou cancelamento do evento</label>
+            <textarea id="descricao_prejuizo" name="descricao_prejuizo"></textarea>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <div class="section-title">Houve reclamação?</div>
+            <div class="field-inline">
+              <label><input type="radio" name="houve_reclamacao" value="nao" checked /> Não</label>
+              <label><input type="radio" name="houve_reclamacao" value="sim" /> Sim</label>
+            </div>
+          </div>
+          <div id="grp_autores_conteudo_reclamacao" class="hidden">
+            <label class="required">Autor(es) e conteúdo resumido da reclamação</label>
+            <textarea id="autores_conteudo_reclamacao" name="autores_conteudo_reclamacao"></textarea>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <div class="section-title">Foi necessário acionar a manutenção?</div>
+            <div class="field-inline">
+              <label><input type="radio" name="acionou_manutencao" value="nao" checked /> Não</label>
+              <label><input type="radio" name="acionou_manutencao" value="sim" /> Sim</label>
+            </div>
+          </div>
+          <div id="grp_hora_acionamento" class="hidden">
+            <label class="required">Horário do acionamento da manutenção</label>
+            <input type="time" id="hora_acionamento_manutencao" name="hora_acionamento_manutencao" />
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <div class="section-title">A anormalidade foi resolvida pela própria operação?</div>
+            <div class="field-inline">
+              <label><input type="radio" name="resolvida_pelo_operador" value="nao" checked /> Não</label>
+              <label><input type="radio" name="resolvida_pelo_operador" value="sim" /> Sim</label>
+            </div>
+          </div>
+          <div id="grp_procedimentos_adotados" class="hidden">
+            <label class="required">Descrição do procedimento adotado</label>
+            <textarea id="procedimentos_adotados" name="procedimentos_adotados"
+              placeholder="O que foi feito?"></textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn-secondary" id="btn-voltar">Voltar</button>
+          <button type="submit" class="btn-primary">Salvar registro</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/config.js"></script>
+  <script src="/js/session-autoload.js" defer></script>
+  <script src="/js/app/forms/operacao/anormalidade.js" defer></script>
+  <script src="/js/manual_usuario.js?v=20260309"></script>
+</body>
+
+</html>

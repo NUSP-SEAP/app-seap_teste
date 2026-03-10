@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <script>/* auto-reload: se a página veio do cache local, recarrega do servidor */
+  !function(){try{var n=performance.getEntriesByType("navigation")[0];if(n&&0===n.transferSize&&"navigate"===n.type)location.reload()}catch(e){}}()</script>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <title>Admin | Senado NUSP</title>
+
+    <link rel="stylesheet" href="/css/app/admin/index.css">
+    <link rel="stylesheet" href="/css/app/admin/dashboard.css">
+    <link rel="stylesheet" href="/css/app/body.css">
+
+    <script src="/js/config.js"></script>
+    <script src="/js/auth_jwt.js"></script>
+    <script src="/js/session-autoload.js" defer></script>
+    <script src="/js/app/admin/periodo_filter.js" defer></script>
+    <script src="/js/app/admin/table_filters.js" defer></script>
+    <script src="/js/app/admin/report_pdf.js" defer></script>
+    <script src="/js/app/admin/index.js" defer></script>
+</head>
+
+<body>
+    <main>
+        <h1>Painel dos Administradores</h1>
+        <div class="cards">
+            <a class="card" href="/home.html">
+                Página Inicial dos Operadores
+                <!-- <div class="muted">Atalhos e formulários gerais</div> -->
+            </a>
+
+            <a class="card" href="/admin/novo_operador.html">
+                Cadastro de Operador
+                <!-- <div class="muted">Criar novas contas de operadores</div> -->
+            </a>
+
+            <a class="card" href="#" onclick="alert('Em breve: Escala Semanal'); return false;">
+                Escala Semanal
+                <!-- <div class="muted">Gerenciar a escala dos operadores</div> -->
+            </a>
+            <a class="card" href="/admin/operacoes_audio.html">
+                Operações de Áudio
+                <!-- <div class="muted">Gerenciar sessões, entradas e anormalidades</div> -->
+            </a>
+            <a class="card" href="/admin/form_edit.html">
+                Edição de Formulários
+                <!-- <div class="muted">Configurar salas, itens de verificação e comissões</div> -->
+            </a>
+            <!-- NOVO CARD PARA O METABASE -->
+            <a class="card" href="/admin/metabase_teste.html">
+                Dashboard Metabase (teste)
+                <!-- <div class="muted">Visualizar o painel de BI de testes</div> -->
+            </a>
+        </div>
+
+        <div class="section-header">
+            <h2>Operadores de Áudio</h2>
+            <div class="toolbar">
+                <input type="text" id="search-operadores" class="search-input"
+                    placeholder="Buscar por nome ou e-mail...">
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table" id="tb-operadores">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="nome" data-column="nome">Nome</th>
+                        <th class="sortable" data-sort="email" data-column="email">E-mail</th>
+                        <th class="sortable" data-sort="status_local" data-column="status_local">No Senado?</th>
+                        <th class="sortable" data-sort="hora_entrada" data-column="hora_entrada">Entrada</th>
+                        <th class="sortable" data-sort="hora_saida" data-column="hora_saida">Saída</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="empty-state">Carregando operadores...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pag-operadores" class="pagination-controls"></div>
+
+        <div class="section-header">
+            <h2>Verificação de Plenários</h2>
+            <div class="toolbar">
+                <input type="text" id="search-checklists" class="search-input"
+                    placeholder="Buscar por local, data ou operador...">
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table" id="tb-checklists">
+                <thead>
+                    <tr>
+                        <th style="width: 20px;"></th>
+                        <th class="sortable" data-sort="sala" data-column="sala">Local</th>
+                        <th class="sortable" data-sort="data" data-column="data">Data</th>
+                        <th class="sortable" data-sort="operador" data-column="operador">Verificado por</th>
+                        <th class="sortable" data-sort="inicio" data-column="inicio">Início</th>
+                        <th class="sortable" data-sort="termino" data-column="termino">Término</th>
+                        <th class="sortable" data-sort="duracao" data-column="duracao">Duração</th>
+                        <th class="sortable" data-sort="status" data-column="status">Status</th>
+                        <th data-column="acoes" data-no-filter="1">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="9" class="empty-state">Carregando checklists...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pag-checklists" class="pagination-controls"></div>
+    </main>
+</body>
+
+</html>
