@@ -43,3 +43,6 @@ node_modules/
 CLAUDE.md
 ideias.md
 prompts.md
+
+# Configurações locais por máquina
+frontend/js/config.js
