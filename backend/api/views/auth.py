@@ -146,6 +146,52 @@ def logout_view(request: HttpRequest):
     return resp
 
 @csrf_exempt
+@jwt_required
+def refresh_view(request: HttpRequest):
+    """
+    POST /webhook/auth/refresh
+
+    Renova o JWT do usuário se a sessão ainda estiver ativa no banco.
+    Isso permite que usuários ativos não sejam deslogados após o TTL inicial.
+    """
+    au = request.auth_user
+    sid = int(au["sid"])
+    sub = au["id"]
+
+    # Sessão já foi validada pelo @jwt_required (que chama _session_touch_ok),
+    # então basta emitir um novo token com exp renovado.
+    iat = int(now().timestamp())
+    exp = iat + int(settings.AUTH_JWT_TTL_SEC)
+    claims = {
+        "sub": sub,
+        "perfil": au["role"],
+        "username": au["username"],
+        "nome": au["name"],
+        "email": au["email"],
+        "sid": str(sid),
+        "iat": iat,
+        "exp": exp,
+    }
+    token = jwt_encode(claims)
+
+    resp = JsonResponse({"ok": True, "token": token, "exp": exp})
+
+    # Atualiza o cookie HttpOnly também
+    cookie_domain = AUTH_COOKIE_DOMAIN or None
+    resp.set_cookie(
+        AUTH_COOKIE_NAME,
+        token,
+        max_age=AUTH_COOKIE_MAX_AGE,
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="Lax",
+        path="/",
+        domain=cookie_domain,
+    )
+
+    return resp
+
+@csrf_exempt
 def html_guard_view(request: HttpRequest):
     """
     GET /webhook/auth/html-guard

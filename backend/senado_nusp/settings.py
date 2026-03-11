@@ -95,12 +95,12 @@ CSRF_TRUSTED_ORIGINS = [o for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split("
 
 # --- JWT ---
 AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", "dev-jwt-secret-replace")
-AUTH_JWT_TTL_SEC = int(os.getenv("AUTH_JWT_TTL_SEC", "3600"))   # 1h padrão
+AUTH_JWT_TTL_SEC = int(os.getenv("AUTH_JWT_TTL_SEC", "5400"))   # 1h30m padrão
 AUTH_JWT_COOKIE_NAME = os.getenv("AUTH_JWT_COOKIE_NAME", "sn_auth_jwt")
 AUTH_JWT_COOKIE_DOMAIN = os.getenv("AUTH_JWT_COOKIE_DOMAIN", "")
 
 # --- Sessão ---
-SESSION_TOUCH_MAX_AGE_SECONDS = int(os.getenv("SESSION_TOUCH_MAX_AGE_SECONDS", "3600"))
+SESSION_TOUCH_MAX_AGE_SECONDS = int(os.getenv("SESSION_TOUCH_MAX_AGE_SECONDS", "5400"))  # 1h30m padrão
 
 # --- Arquivos de upload (fotos) ---
 FILES_DIR = os.getenv("FILES_DIR", str(BASE_DIR / "public"))

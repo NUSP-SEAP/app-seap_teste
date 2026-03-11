@@ -236,6 +236,9 @@ urlpatterns = [
         name="operador_anormalidade_detalhe",
     ),
 
+    # Refresh token (renova JWT de sessão ativa)
+    path("auth/refresh", views.refresh_view, name="auth_refresh"),
+
     # Logout
     path("auth/logout", views.logout_view, name="logout"),
 ]

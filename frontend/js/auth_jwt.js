@@ -109,8 +109,9 @@ async function doLogin(usuario, senha) {
   let data; try { data = JSON.parse(text || '{}'); } catch { throw new Error(`Resposta do login não é JSON: ${text?.slice(0, 200) || '(vazio)'}`); }
   if (!data.token) throw new Error('Token não recebido');
 
-  // Guarda token
+  // Guarda token e inicia refresh automático
   saveToken(data.token);
+  startRefreshTimer();
 
   // Deriva usuário e role direto do JWT (sem chamar whoami para decidir rota)
   const claims = deepClean(parseJwt(data.token) || {});
@@ -149,6 +150,7 @@ async function doLogout() {
   } catch (_) {
     // Mesmo se o servidor falhar, seguimos limpando o cliente
   } finally {
+    stopRefreshTimer();
     try { Auth.clearToken && Auth.clearToken(); } catch { }
     try { Auth.saveUser && Auth.saveUser(null); } catch { }
     localStorage.removeItem('auth_token');
@@ -182,4 +184,73 @@ function paintHeader(me) {
   if (logoutEl) { logoutEl.style.display = ''; }
 }
 
-window.Auth = { saveToken, loadToken, clearToken, saveUser, loadUser, authFetch, whoAmI, protectPage, doLogin, doLogout, renderUserHeader };
+// ==== Refresh silencioso (mantém sessão ativa enquanto houver atividade) ====
+let __refreshTimer = null;
+let __lastUserActivity = Date.now();
+
+// Rastreia atividade do usuário (mouse, teclado, toque)
+function _trackActivity() { __lastUserActivity = Date.now(); }
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+  document.addEventListener(evt, _trackActivity, { passive: true, capture: true })
+);
+
+// Margem antes da expiração para disparar o refresh (5 minutos)
+const REFRESH_MARGIN_SEC = 300;
+// Intervalo de checagem (60 segundos)
+const REFRESH_CHECK_INTERVAL_MS = 60000;
+// Tempo máximo de inatividade para considerar o usuário "ausente" (1h30m = 5400s)
+const INACTIVITY_LIMIT_MS = 5400 * 1000;
+
+async function _tryRefreshToken() {
+  try {
+    const token = loadToken();
+    if (!token) return;
+
+    // Se o usuário está inativo há mais que o limite, não renova
+    const idleMs = Date.now() - __lastUserActivity;
+    if (idleMs > INACTIVITY_LIMIT_MS) return;
+
+    // Verifica se o token está próximo de expirar
+    const claims = parseJwt(token);
+    if (!claims || !claims.exp) return;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const remaining = claims.exp - nowSec;
+
+    // Só renova se faltar menos que a margem
+    if (remaining > REFRESH_MARGIN_SEC) return;
+
+    // Chama o endpoint de refresh
+    const url = AppConfig.apiUrl(AppConfig.endpoints.auth.refresh);
+    const resp = await authFetch(url, { method: 'POST' });
+    if (!resp.ok) {
+      if (resp.status === 401) {
+        clearToken(); saveUser(null);
+        window.location.replace('/index.html');
+      }
+      return;
+    }
+    const data = await resp.json();
+    if (data.token) {
+      saveToken(data.token);
+      // Atualiza o exp no cache do usuário
+      const cached = loadUser();
+      if (cached) { cached.exp = data.exp; saveUser(cached); }
+    }
+  } catch (_) { /* falha silenciosa */ }
+}
+
+function startRefreshTimer() {
+  if (__refreshTimer) return;
+  __refreshTimer = setInterval(_tryRefreshToken, REFRESH_CHECK_INTERVAL_MS);
+  // Checa imediatamente também
+  _tryRefreshToken();
+}
+
+function stopRefreshTimer() {
+  if (__refreshTimer) { clearInterval(__refreshTimer); __refreshTimer = null; }
+}
+
+// Inicia o timer automaticamente se houver token
+if (loadToken()) startRefreshTimer();
+
+window.Auth = { saveToken, loadToken, clearToken, saveUser, loadUser, authFetch, whoAmI, protectPage, doLogin, doLogout, renderUserHeader, startRefreshTimer, stopRefreshTimer };

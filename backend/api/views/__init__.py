@@ -1,4 +1,4 @@
-from .auth import login_view, whoami_view, logout_view, html_guard_view
+from .auth import login_view, whoami_view, logout_view, html_guard_view, refresh_view
 from .operacao import (
     lookup_registro_operacao_view,
     registro_operacao_audio_view,

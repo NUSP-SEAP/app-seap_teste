@@ -4,6 +4,7 @@
 !frontend/
 !backend/
 !.gitignore
+!CLAUDE.md
 
 # Python
 __pycache__/
