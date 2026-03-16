@@ -1,5 +1,9 @@
 // Gerenciamento de Estado e Lógica de Decisão Pura
 
+// Constantes canônicas para detecção de tipo de sala
+export const REGEX_AUDITORIO = /audit[oó]rio/;
+export const REGEX_PLENARIO = /plen[áa]rio(?!\s*\d)/;
+
 /**
  * Objeto central de estado.
  * Como são módulos, exportamos um objeto constante que mantém as propriedades mutáveis.
@@ -29,8 +33,8 @@ export function getTipoEventoSelecionado(salaSelect, comissaoSelect) {
         ""
     ).toLowerCase();
 
-    const isAuditorio = /audit[oó]rio/.test(textoSala);
-    const isPlenario = /plen[áa]rio(?!\s*\d)/.test(textoSala);
+    const isAuditorio = REGEX_AUDITORIO.test(textoSala);
+    const isPlenario = REGEX_PLENARIO.test(textoSala);
 
     if (isAuditorio) {
         return "outros";
@@ -54,11 +58,6 @@ export function getTipoEventoSelecionado(salaSelect, comissaoSelect) {
     }
 
     return "operacao";
-}
-
-export function setTipoEventoSelecionado(_tipo) {
-    // Mantida apenas por compatibilidade: não há mais rádios de "tipo_evento" na UI.
-    // A lógica de tipo agora é derivada de sala + dropdown "Tipo".
 }
 
 export function derivarSituacaoOperador(estado) {

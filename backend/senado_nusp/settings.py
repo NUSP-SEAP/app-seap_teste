@@ -100,6 +100,7 @@ AUTH_JWT_COOKIE_NAME = os.getenv("AUTH_JWT_COOKIE_NAME", "sn_auth_jwt")
 AUTH_JWT_COOKIE_DOMAIN = os.getenv("AUTH_JWT_COOKIE_DOMAIN", "")
 
 # --- Sessão ---
+# Deve ter o mesmo valor que AUTH_JWT_TTL_SEC (sessão expira por inatividade, não por tempo fixo)
 SESSION_TOUCH_MAX_AGE_SECONDS = int(os.getenv("SESSION_TOUCH_MAX_AGE_SECONDS", "5400"))  # 1h30m padrão
 
 # --- Arquivos de upload (fotos) ---
@@ -107,5 +108,4 @@ FILES_DIR = os.getenv("FILES_DIR", str(BASE_DIR / "public"))
 FILES_URL_PREFIX = os.getenv("FILES_URL_PREFIX", "/files/")
 OPERADORES_DIRNAME = "operadores"
 
-# Para criar o diretório base se não existir
-os.makedirs(FILES_DIR, exist_ok=True)
+# Diretório será criado em api/apps.py → AppConfig.ready()

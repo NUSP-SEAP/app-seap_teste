@@ -31,6 +31,15 @@
         return t.substring(0, 5);
     };
 
+    function escapeHtml(s) {
+        return String(s ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
     async function loadData() {
         const url = `${AppConfig.apiUrl(AppConfig.endpoints.adminDashboard.detalheChecklist)}?checklist_id=${checklistId}`;
 
@@ -89,9 +98,9 @@
                 html += `
                     <div class="check-item-readonly">
                         <div class="check-header">
-                            <span class="check-label">${it.item_nome}</span>
+                            <span class="check-label">${escapeHtml(it.item_nome)}</span>
                         </div>
-                        <div class="text-value-box">${valor}</div>
+                        <div class="text-value-box">${escapeHtml(valor)}</div>
                     </div>
                 `;
             } else {
@@ -103,7 +112,7 @@
                 if (it.status === 'Falha' && it.descricao_falha) {
                     descHtml = `
                         <div class="falha-box">
-                            <strong>Descrição da falha:</strong> ${it.descricao_falha}
+                            <strong>Descrição da falha:</strong> ${escapeHtml(it.descricao_falha)}
                         </div>
                     `;
                 }
@@ -111,9 +120,9 @@
                 html += `
                     <div class="check-item-readonly">
                         <div class="check-header">
-                            <span class="check-label">${it.item_nome}</span>
+                            <span class="check-label">${escapeHtml(it.item_nome)}</span>
                             <span class="check-status ${statusClass}">
-                                ${statusIcon} ${it.status}
+                                ${statusIcon} ${escapeHtml(it.status)}
                             </span>
                         </div>
                         ${descHtml}

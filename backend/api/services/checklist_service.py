@@ -4,19 +4,7 @@ from typing import Any, Dict, List, Optional
 from django.db import transaction
 
 from .. import db
-
-
-class ServiceValidationError(Exception):
-    """
-    Erro de validação de regra de negócio para o domínio de checklist.
-    As views vão capturar isso e devolver HTTP 400 com o payload apropriado.
-    """
-
-    def __init__(self, code: str, message: str, extra: Optional[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.extra = extra or {}
+from .exceptions import ServiceValidationError
 
 
 @dataclass
@@ -24,6 +12,94 @@ class ChecklistResult:
     checklist_id: int
     total_respostas: int
 
+
+@dataclass
+class ChecklistEditResult:
+    checklist_id: int
+    total_respostas_atualizadas: int
+
+
+# ──────────────────────────────────────────────
+#  Validação compartilhada de itens
+# ──────────────────────────────────────────────
+
+def _validar_itens_checklist(itens: list) -> int:
+    """Valida a lista de itens do checklist.
+
+    Regras:
+      - Cada item deve ser um dict com 'item_tipo_id' ou 'nome'.
+      - Se status == 'Falha', exige descricao_falha com >= 10 caracteres.
+      - Pelo menos 1 item deve estar preenchido (status ou valor_texto).
+
+    Retorna o total de itens marcados.
+    Levanta ServiceValidationError se alguma regra for violada.
+    """
+    invalid: List[int] = []
+    falha_sem_desc: List[int] = []
+    total_marcados = 0
+
+    for idx, it in enumerate(itens):
+        if not isinstance(it, dict):
+            invalid.append(idx)
+            continue
+
+        item_id = it.get("item_tipo_id")
+        nome = (it.get("nome") or "").strip()
+
+        if not item_id and not nome:
+            invalid.append(idx)
+            continue
+
+        status = (it.get("status") or "").strip()
+        descricao_falha = (it.get("descricao_falha") or "").strip()
+        valor_texto = (it.get("valor_texto") or "").strip()
+
+        if status or valor_texto:
+            total_marcados += 1
+
+            if status.lower() == "falha":
+                if not descricao_falha or len(descricao_falha) < 10:
+                    falha_sem_desc.append(idx)
+
+    if invalid:
+        raise ServiceValidationError(
+            code="invalid_items",
+            message="Itens de checklist inválidos (deve conter 'item_tipo_id').",
+            extra={"invalid_indexes": invalid},
+        )
+
+    if total_marcados == 0:
+        raise ServiceValidationError(
+            code="no_item_marked",
+            message="Pelo menos um item do checklist deve ser preenchido.",
+            extra={"total_itens": len(itens)},
+        )
+
+    if falha_sem_desc:
+        raise ServiceValidationError(
+            code="missing_failure_description",
+            message="Itens marcados como Falha precisam de descrição com no mínimo 10 caracteres.",
+            extra={"indexes": falha_sem_desc},
+        )
+
+    return total_marcados
+
+
+def _validar_sala_id(sala_id_raw) -> int:
+    """Valida e converte sala_id para int."""
+    try:
+        return int(sala_id_raw)
+    except (TypeError, ValueError):
+        raise ServiceValidationError(
+            code="invalid_sala_id",
+            message="Local inválido.",
+            extra={"value": sala_id_raw},
+        )
+
+
+# ──────────────────────────────────────────────
+#  Registro de checklist
+# ──────────────────────────────────────────────
 
 def registrar_checklist(payload: Dict[str, Any], user_id: Optional[str]) -> ChecklistResult:
     """
@@ -43,7 +119,7 @@ def registrar_checklist(payload: Dict[str, Any], user_id: Optional[str]) -> Chec
         )
 
     data_operacao = body.get("data_operacao")
-    sala_id_raw = body.get("sala_id")
+    sala_id = _validar_sala_id(body.get("sala_id"))
     turno = body.get("turno")
     hora_inicio = body.get("hora_inicio_testes")
     hora_termino = body.get("hora_termino_testes")
@@ -53,78 +129,9 @@ def registrar_checklist(payload: Dict[str, Any], user_id: Optional[str]) -> Chec
 
     # 2) Itens
     itens = body.get("itens") if isinstance(body.get("itens"), list) else []
+    _validar_itens_checklist(itens)
 
-    # 2.1) Valida itens e aplica regras de negócio
-    invalid: List[int] = []
-    falha_sem_desc: List[int] = []
-    total_marcados = 0
-
-    for idx, it in enumerate(itens):
-        if not isinstance(it, dict):
-            invalid.append(idx)
-            continue
-
-        # --- MUDANÇA AQUI: Aceita ID ou Nome ---
-        item_id = it.get("item_tipo_id")
-        nome_raw = it.get("nome")
-        nome = (nome_raw or "").strip()
-
-        # Se não tiver nem ID nem Nome, é inválido
-        if not item_id and not nome:
-            invalid.append(idx)
-            continue
-
-        status_raw = it.get("status")
-        status = (status_raw or "").strip()
-
-        desc_raw = it.get("descricao_falha")
-        descricao_falha = (desc_raw or "").strip()
-        
-        # Leitura do valor texto (novo campo)
-        valor_texto = (it.get("valor_texto") or "").strip()
-
-        # Se tiver valor texto, conta como marcado mesmo sem status explícito (embora o front mande status='Ok')
-        if status or valor_texto:
-            total_marcados += 1
-
-            # Se marcou Falha, exige descrição
-            if status.lower() == "falha" and not descricao_falha:
-                falha_sem_desc.append(idx)
-
-    if invalid:
-        raise ServiceValidationError(
-            code="invalid_items",
-            message="Itens de checklist inválidos (deve conter 'item_tipo_id').",
-            extra={"invalid_indexes": invalid},
-        )
-
-    # Pelo menos 1 item marcado
-    if total_marcados == 0:
-        raise ServiceValidationError(
-            code="no_item_marked",
-            message="Pelo menos um item do checklist deve ser preenchido.",
-            extra={"total_itens": len(itens)},
-        )
-
-    # Falha sem descrição
-    if falha_sem_desc:
-        raise ServiceValidationError(
-            code="missing_failure_description",
-            message="Itens marcados como Falha precisam de descrição.",
-            extra={"indexes": falha_sem_desc},
-        )
-
-    # 3) Valida sala_id (int) e turno
-    try:
-        sala_id = int(sala_id_raw)
-    except (TypeError, ValueError):
-        raise ServiceValidationError(
-            code="invalid_sala_id",
-            message="Local inválido.",
-            extra={"value": sala_id_raw},
-        )
-
-    # Se não veio turno, tenta inferir pela hora de início dos testes
+    # 3) Se não veio turno, tenta inferir pela hora de início dos testes
     if not turno:
         try:
             hora_str = hora_inicio or ""
@@ -135,7 +142,6 @@ def registrar_checklist(payload: Dict[str, Any], user_id: Optional[str]) -> Chec
 
     # 4) Operações de banco em transação única
     with transaction.atomic():
-        # 4.1) Cabeçalho em forms.checklist
         checklist_id = db.insert_checklist(
             data_operacao=data_operacao,
             sala_id=str(sala_id),
@@ -149,7 +155,6 @@ def registrar_checklist(payload: Dict[str, Any], user_id: Optional[str]) -> Chec
             atualizado_por=user_id,
         )
 
-        # 4.2) Respostas em forms.checklist_resposta
         total_respostas = db.insert_checklist_respostas(
             checklist_id=checklist_id,
             itens=itens,
@@ -166,12 +171,6 @@ def registrar_checklist(payload: Dict[str, Any], user_id: Optional[str]) -> Chec
 # ──────────────────────────────────────────────
 #  Edição de checklist
 # ──────────────────────────────────────────────
-
-@dataclass
-class ChecklistEditResult:
-    checklist_id: int
-    total_respostas_atualizadas: int
-
 
 def editar_checklist(
     checklist_id: int,
@@ -196,71 +195,23 @@ def editar_checklist(
         )
 
     data_operacao = body.get("data_operacao")
-    sala_id_raw = body.get("sala_id")
+    sala_id = _validar_sala_id(body.get("sala_id"))
     observacoes = body.get("observacoes")
 
-    # 2) Valida sala_id
-    try:
-        sala_id = int(sala_id_raw)
-    except (TypeError, ValueError):
-        raise ServiceValidationError(
-            code="invalid_sala_id",
-            message="Local inválido.",
-            extra={"value": sala_id_raw},
-        )
-
-    # 3) Itens
+    # 2) Itens
     itens = body.get("itens") if isinstance(body.get("itens"), list) else []
+    _validar_itens_checklist(itens)
 
-    falha_sem_desc: List[int] = []
-    total_marcados = 0
-
-    for idx, it in enumerate(itens):
-        if not isinstance(it, dict):
-            continue
-
-        item_id = it.get("item_tipo_id")
-        if not item_id:
-            continue
-
-        status = (it.get("status") or "").strip()
-        descricao_falha = (it.get("descricao_falha") or "").strip()
-        valor_texto = (it.get("valor_texto") or "").strip()
-
-        if status or valor_texto:
-            total_marcados += 1
-
-            if status.lower() == "falha":
-                if not descricao_falha or len(descricao_falha) < 10:
-                    falha_sem_desc.append(idx)
-
-    if total_marcados == 0:
-        raise ServiceValidationError(
-            code="no_item_marked",
-            message="Pelo menos um item do checklist deve ser preenchido.",
-            extra={"total_itens": len(itens)},
-        )
-
-    if falha_sem_desc:
-        raise ServiceValidationError(
-            code="missing_failure_description",
-            message="Itens marcados como Falha precisam de descrição com no mínimo 10 caracteres.",
-            extra={"indexes": falha_sem_desc},
-        )
-
-    # 4) Operações de banco em transação única
+    # 3) Operações de banco em transação única
     with transaction.atomic():
-        # 4.1) Captura snapshot antes da edição
         snapshot = db.get_checklist_snapshot(checklist_id)
 
-        # 4.2) Grava snapshot no histórico
         db.insert_checklist_historico(
             checklist_id=checklist_id,
             snapshot=snapshot,
             editado_por=user_id,
         )
 
-        # 4.3) Atualiza cabeçalho
         db.update_checklist(
             checklist_id=checklist_id,
             data_operacao=data_operacao,
@@ -269,7 +220,6 @@ def editar_checklist(
             atualizado_por=user_id,
         )
 
-        # 4.4) Atualiza respostas
         total_atualizadas = db.update_checklist_respostas(
             checklist_id=checklist_id,
             itens=itens,

@@ -9,6 +9,6 @@ from .operacao import (
 )
 from .checklist import checklist_registro_view, checklist_itens_tipo_view, checklist_editar_view
 from .anormalidade import registro_anormalidade_view
-from .admin import admin_operador_novo, admin_administrador_novo, dashboard_operacoes_entradas_view
+from . import admin
 from . import operador_dashboard
 from .lookup import lookup_operadores, lookup_salas, comissoes_lookup_view

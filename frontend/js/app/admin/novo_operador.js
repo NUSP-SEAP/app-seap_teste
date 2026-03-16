@@ -9,20 +9,6 @@
     // Certifique-se que AppConfig está carregado antes deste script
     const WEBHOOK_URL = AppConfig.apiUrl(AppConfig.endpoints.admin.novoOperador);
 
-    function getAuthToken() {
-        try {
-            if (window.Auth && typeof window.Auth.loadToken === "function") {
-                return window.Auth.loadToken();
-            }
-        } catch (e) { }
-        return (
-            localStorage.getItem("auth_token") ||
-            localStorage.getItem("token") ||
-            localStorage.getItem("jwt") ||
-            ""
-        );
-    }
-
     if (btnVoltar) {
         btnVoltar.addEventListener("click", function () {
             window.location.href = "/admin/index.html";
@@ -109,11 +95,8 @@
             submitBtn.textContent = "Salvando...";
 
             try {
-                const token = getAuthToken();
-
-                const res = await fetch(WEBHOOK_URL, {
+                const res = await Auth.authFetch(WEBHOOK_URL, {
                     method: "POST",
-                    headers: token ? { "Authorization": "Bearer " + token } : {},
                     body: formData
                 });
 
@@ -124,13 +107,13 @@
                 }
 
                 if (res.status === 400) {
-                    const data = await safeJson(res);
+                    const data = await Utils.safeJson(res);
                     alert("Dados inválidos: " + (data?.missing || "verifique os campos obrigatórios."));
                     return;
                 }
 
                 if (res.status === 409) {
-                    const data = await safeJson(res);
+                    const data = await Utils.safeJson(res);
                     alert(data?.message || "E-mail ou usuário já cadastrado.");
                     return;
                 }
@@ -141,7 +124,7 @@
                     return;
                 }
 
-                const data = await safeJson(res);
+                const data = await Utils.safeJson(res);
                 const id = data?.operador?.id || "(sem ID)";
                 alert("Operador cadastrado com sucesso! ID: " + id);
 
@@ -157,7 +140,4 @@
         });
     }
 
-    async function safeJson(res) {
-        try { return await res.json(); } catch { return null; }
-    }
 })();

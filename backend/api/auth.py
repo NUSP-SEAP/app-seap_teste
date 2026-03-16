@@ -3,7 +3,10 @@ import jwt
 
 from django.conf import settings
 from django.http import JsonResponse
-from django.db import connection
+from django.views.decorators.csrf import csrf_exempt
+
+from .db.auth import session_touch_ok
+
 
 def parse_bearer(auth_header: str) -> str:
     if not auth_header:
@@ -18,27 +21,6 @@ def jwt_encode(payload: dict) -> str:
 
 def jwt_decode(token: str) -> dict:
     return jwt.decode(token, settings.AUTH_JWT_SECRET, algorithms=["HS256"])
-
-def _session_touch_ok(sid: int, sub: str) -> bool:
-    # Atualiza last_activity se a sessão não estiver revogada e se o último toque for recente
-    with connection.cursor() as cur:
-        cur.execute(
-            '''
-            WITH upd AS (
-                UPDATE pessoa.auth_sessions
-                   SET last_activity = NOW()
-                 WHERE id = %s::bigint
-                   AND user_id = %s::uuid
-                   AND revoked = false
-                   AND NOW() - last_activity <= (%s || ' seconds')::interval
-                 RETURNING id
-            )
-            SELECT id FROM upd;
-            ''',
-            [sid, sub, settings.SESSION_TOUCH_MAX_AGE_SECONDS],
-        )
-        row = cur.fetchone()
-        return bool(row and row[0])
 
 def jwt_required(view):
     @wraps(view)
@@ -64,8 +46,7 @@ def jwt_required(view):
         sid = int(claims["sid"])
         sub = claims["sub"]
 
-        # Tocar a sessão (equivalente ao session_touch do n8n)
-        ok = _session_touch_ok(sid, sub)
+        ok = session_touch_ok(sid, sub)
         if not ok:
             return JsonResponse({"error": "unauthorized", "message": "Token inválido ou expirado."}, status=401)
 
@@ -89,6 +70,14 @@ def admin_required(view):
         if not getattr(request, "auth_user", None):
             return JsonResponse({"error": "unauthorized", "message": "Não autenticado"}, status=401)
         if request.auth_user.get("role") != "administrador":
-            return JsonResponse({"ok": False, "error": "forbidden", "message": "Somente administradores podem criar operadores."}, status=403)
+            return JsonResponse({"ok": False, "error": "forbidden", "message": "Somente administradores podem acessar este recurso."}, status=403)
         return view(request, *args, **kwargs)
     return _wrapped
+
+
+def admin_view(view):
+    """Decorator composto: @csrf_exempt + @jwt_required + @admin_required."""
+    wrapped = admin_required(view)
+    wrapped = jwt_required(wrapped)
+    wrapped = csrf_exempt(wrapped)
+    return wrapped

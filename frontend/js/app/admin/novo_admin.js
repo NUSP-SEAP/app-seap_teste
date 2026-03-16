@@ -6,57 +6,43 @@
 
     const WEBHOOK_URL = AppConfig.apiUrl(
         (AppConfig.endpoints.admin && AppConfig.endpoints.admin.novoAdmin) ||
-        "/webhook/admin/admins/novo"
+        "/api/admin/admins/novo"
     );
 
-    function getToken() {
-        return (localStorage.getItem("auth_token") || "").trim();
-    }
-
     async function ensureDouglasOnly() {
-        const token = getToken();
-        if (!token) {
-            window.location.replace("/index.html");
-            return false;
-        }
-
-        let resp;
         try {
             const whoamiUrl = AppConfig.apiUrl(AppConfig.endpoints.auth.whoami);
-            resp = await fetch(whoamiUrl, {
+            const resp = await Auth.authFetch(whoamiUrl, {
                 method: "GET",
-                headers: {
-                    "Authorization": "Bearer " + token,
-                    "Accept": "application/json"
-                }
+                headers: { "Accept": "application/json" }
             });
+
+            if (resp.status === 401 || !resp.ok) {
+                window.location.replace("/index.html");
+                return false;
+            }
+
+            let data;
+            try {
+                data = await resp.json();
+            } catch (e) {
+                window.location.replace("/index.html");
+                return false;
+            }
+
+            const user = (data && data.user) || {};
+            const username = (user.username || "").toLowerCase();
+
+            if (username !== "douglas.antunes") {
+                window.location.replace("/home.html");
+                return false;
+            }
+
+            return true;
         } catch (e) {
             window.location.replace("/index.html");
             return false;
         }
-
-        if (resp.status === 401 || !resp.ok) {
-            window.location.replace("/index.html");
-            return false;
-        }
-
-        let data;
-        try {
-            data = await resp.json();
-        } catch (e) {
-            window.location.replace("/index.html");
-            return false;
-        }
-
-        const user = (data && data.user) || {};
-        const username = (user.username || "").toLowerCase();
-
-        if (username !== "douglas.antunes") {
-            window.location.replace("/home.html");
-            return false;
-        }
-
-        return true;
     }
 
     function initForm() {
@@ -102,12 +88,6 @@
                 return;
             }
 
-            const token = getToken();
-            if (!token) {
-                window.location.replace("/index.html");
-                return;
-            }
-
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalLabel = submitBtn ? submitBtn.textContent : "";
             if (submitBtn) {
@@ -125,12 +105,9 @@
                     senha: senha
                 };
 
-                const resp = await fetch(WEBHOOK_URL, {
+                const resp = await Auth.authFetch(WEBHOOK_URL, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": "Bearer " + token
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
 

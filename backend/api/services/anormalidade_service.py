@@ -4,20 +4,8 @@ from typing import Any, Dict, Optional
 from django.db import transaction
 
 from .. import db
-
-
-class ServiceValidationError(Exception):
-    """
-    Erro de validação para o domínio de anormalidade.
-    A view vai capturar isso e devolver HTTP 400 com o mesmo formato
-    de erros que você já usa hoje (payload com "errors").
-    """
-
-    def __init__(self, code: str, message: str, extra: Optional[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.extra = extra or {}
+from .exceptions import ServiceValidationError
+from .utils import clean_str, parse_bool
 
 
 @dataclass
@@ -48,44 +36,36 @@ def registrar_anormalidade(payload: Dict[str, Any], user_id: Optional[str]) -> R
     body = payload or {}
 
     # 1) Leitura dos campos (strings cruas)
-    registro_id_raw = (body.get("registro_id") or "").strip()
-    data_str = (body.get("data") or "").strip()
-    sala_id_raw = (body.get("sala_id") or "").strip()
-    nome_evento = (body.get("nome_evento") or "").strip()
+    registro_id_raw = clean_str(body, "registro_id")
+    data_str = clean_str(body, "data")
+    sala_id_raw = clean_str(body, "sala_id")
+    nome_evento = clean_str(body, "nome_evento")
 
-    hora_inicio_anormalidade = (body.get("hora_inicio_anormalidade") or "").strip()
-    descricao_anormalidade = (body.get("descricao_anormalidade") or "").strip()
+    hora_inicio_anormalidade = clean_str(body, "hora_inicio_anormalidade")
+    descricao_anormalidade = clean_str(body, "descricao_anormalidade")
 
-    houve_prejuizo_raw = (body.get("houve_prejuizo") or "").strip()
-    descricao_prejuizo = (body.get("descricao_prejuizo") or "").strip()
+    houve_prejuizo = parse_bool(clean_str(body, "houve_prejuizo")) or False
+    descricao_prejuizo = clean_str(body, "descricao_prejuizo")
 
-    houve_reclamacao_raw = (body.get("houve_reclamacao") or "").strip()
-    autores_conteudo_reclamacao = (body.get("autores_conteudo_reclamacao") or "").strip()
+    houve_reclamacao = parse_bool(clean_str(body, "houve_reclamacao")) or False
+    autores_conteudo_reclamacao = clean_str(body, "autores_conteudo_reclamacao")
 
-    acionou_manutencao_raw = (body.get("acionou_manutencao") or "").strip()
-    hora_acionamento_manutencao = (body.get("hora_acionamento_manutencao") or "").strip()
+    acionou_manutencao = parse_bool(clean_str(body, "acionou_manutencao")) or False
+    hora_acionamento_manutencao = clean_str(body, "hora_acionamento_manutencao")
 
-    resolvida_pelo_operador_raw = (body.get("resolvida_pelo_operador") or "").strip()
-    procedimentos_adotados = (body.get("procedimentos_adotados") or "").strip()
+    resolvida_pelo_operador = parse_bool(clean_str(body, "resolvida_pelo_operador")) or False
+    procedimentos_adotados = clean_str(body, "procedimentos_adotados")
 
-    data_solucao = (body.get("data_solucao") or "").strip()
-    hora_solucao = (body.get("hora_solucao") or "").strip()
+    data_solucao = clean_str(body, "data_solucao")
+    hora_solucao = clean_str(body, "hora_solucao")
 
-    responsavel_evento = (body.get("responsavel_evento") or "").strip()
+    responsavel_evento = clean_str(body, "responsavel_evento")
 
     # vínculo com a ENTRADA (registro_operacao_operador.id)
-    entrada_id_raw = (body.get("entrada_id") or "").strip()
+    entrada_id_raw = clean_str(body, "entrada_id")
 
     # id da própria anormalidade (para edição)
-    anom_id_raw = (body.get("id") or body.get("registro_anormalidade_id") or "").strip()
-
-    def _as_bool(v: str) -> bool:
-        return (v or "").strip().lower() in ("sim", "true", "1", "on")
-
-    houve_prejuizo = _as_bool(houve_prejuizo_raw)
-    houve_reclamacao = _as_bool(houve_reclamacao_raw)
-    acionou_manutencao = _as_bool(acionou_manutencao_raw)
-    resolvida_pelo_operador = _as_bool(resolvida_pelo_operador_raw)
+    anom_id_raw = clean_str(body, "id") or clean_str(body, "registro_anormalidade_id")
 
     # 2) Validações de obrigatoriedade (mesmo padrão da versão antiga)
     errors: Dict[str, str] = {}
@@ -116,15 +96,13 @@ def registrar_anormalidade(payload: Dict[str, Any], user_id: Optional[str]) -> R
     if acionou_manutencao and not hora_acionamento_manutencao:
         errors["hora_acionamento_manutencao"] = "Campo obrigatório quando houve acionamento de manutenção."
 
-    # NOVO: se foi resolvida pelo operador, precisa descrever o que foi feito
     if resolvida_pelo_operador and not procedimentos_adotados:
         errors["procedimentos_adotados"] = (
             "Campo obrigatório quando a anormalidade foi resolvida pelo operador."
         )
-    # --- NOVA VALIDAÇÃO: Datas Coerentes ---
-    # Evita IntegrityError da constraint 'ck_datas_coerentes'
+
+    # Validação de datas coerentes (evita IntegrityError da constraint 'ck_datas_coerentes')
     if data_solucao:
-        # Comparação léxica de strings ISO (YYYY-MM-DD) funciona corretamente
         if data_solucao < data_str:
             errors["data_solucao"] = (
                 "Data da solução da anormalidade não pode ser anterior à data da ocorrência."
@@ -136,7 +114,7 @@ def registrar_anormalidade(payload: Dict[str, Any], user_id: Optional[str]) -> R
                 )
 
     # entrada_id é opcional, mas se vier, deve ser inteiro positivo
-    entrada_id: Optional[int]
+    entrada_id: Optional[int] = None
     if entrada_id_raw:
         try:
             entrada_id_val = int(entrada_id_raw)
@@ -145,9 +123,6 @@ def registrar_anormalidade(payload: Dict[str, Any], user_id: Optional[str]) -> R
             entrada_id = entrada_id_val
         except (TypeError, ValueError):
             errors["entrada_id"] = "Entrada inválida."
-            entrada_id = None
-    else:
-        entrada_id = None
 
     if errors:
         raise ServiceValidationError(
@@ -191,59 +166,38 @@ def registrar_anormalidade(payload: Dict[str, Any], user_id: Optional[str]) -> R
             )
 
     # 4) Normalização de opcionais (NULL se vazio)
-    data_solucao_val = data_solucao or None
-    hora_solucao_val = hora_solucao or None
-    hora_acionamento_manutencao_val = hora_acionamento_manutencao or None
+    # Dict de parâmetros comum a INSERT e UPDATE
+    params = dict(
+        data=data_str,
+        sala_id=sala_id,
+        nome_evento=nome_evento,
+        hora_inicio_anormalidade=hora_inicio_anormalidade,
+        descricao_anormalidade=descricao_anormalidade,
+        houve_prejuizo=houve_prejuizo,
+        descricao_prejuizo=descricao_prejuizo or None,
+        houve_reclamacao=houve_reclamacao,
+        autores_conteudo_reclamacao=autores_conteudo_reclamacao or None,
+        acionou_manutencao=acionou_manutencao,
+        hora_acionamento_manutencao=hora_acionamento_manutencao or None,
+        resolvida_pelo_operador=resolvida_pelo_operador,
+        procedimentos_adotados=procedimentos_adotados or None,
+        data_solucao=data_solucao or None,
+        hora_solucao=hora_solucao or None,
+        responsavel_evento=responsavel_evento,
+        atualizado_por=user_id,
+    )
 
     # 5) Inserção / atualização transacional
     with transaction.atomic():
         if anom_id is not None:
-            # UPDATE
-            db.update_registro_anormalidade(
-                anom_id=anom_id,
-                data=data_str,
-                sala_id=sala_id,
-                nome_evento=nome_evento,
-                hora_inicio_anormalidade=hora_inicio_anormalidade,
-                descricao_anormalidade=descricao_anormalidade,
-                houve_prejuizo=houve_prejuizo,
-                descricao_prejuizo=descricao_prejuizo or None,
-                houve_reclamacao=houve_reclamacao,
-                autores_conteudo_reclamacao=autores_conteudo_reclamacao or None,
-                acionou_manutencao=acionou_manutencao,
-                hora_acionamento_manutencao=hora_acionamento_manutencao_val,
-                resolvida_pelo_operador=resolvida_pelo_operador,
-                procedimentos_adotados=procedimentos_adotados or None,
-                data_solucao=data_solucao_val,
-                hora_solucao=hora_solucao_val,
-                responsavel_evento=responsavel_evento,
-                atualizado_por=user_id,
-            )
+            db.update_registro_anormalidade(anom_id=anom_id, **params)
             registro_anom_id = anom_id
         else:
-            # INSERT
             registro_anom_id = db.insert_registro_anormalidade(
                 registro_id=registro_id,
-                data=data_str,
-                sala_id=sala_id,
-                nome_evento=nome_evento,
-                hora_inicio_anormalidade=hora_inicio_anormalidade,
-                descricao_anormalidade=descricao_anormalidade,
-                houve_prejuizo=houve_prejuizo,
-                descricao_prejuizo=descricao_prejuizo or None,
-                houve_reclamacao=houve_reclamacao,
-                autores_conteudo_reclamacao=autores_conteudo_reclamacao or None,
-                acionou_manutencao=acionou_manutencao,
-                hora_acionamento_manutencao=hora_acionamento_manutencao_val,
-                resolvida_pelo_operador=resolvida_pelo_operador,
-                procedimentos_adotados=procedimentos_adotados or None,
-                data_solucao=data_solucao_val,
-                hora_solucao=hora_solucao_val,
-                responsavel_evento=responsavel_evento,
                 criado_por=user_id,
-                atualizado_por=user_id,
-                # <<< conforme a especificação: insert_registro_anormalidade ganhou entrada_id
                 entrada_id=entrada_id,
+                **params,
             )
 
     return RegistroAnormalidadeResult(

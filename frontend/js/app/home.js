@@ -1,21 +1,3 @@
-async function loadComponent(id, file) {
-    try {
-        const response = await fetch(file);
-        const html = await response.text();
-        document.getElementById(id).innerHTML = html;
-    } catch (e) {
-        console.error(`Erro ao carregar ${file}:`, e);
-    }
-}
-
-// --- Função para carregar scripts ---
-function loadScript(src) {
-    const script = document.createElement('script');
-    script.src = src;
-    script.defer = true;
-    document.body.appendChild(script);
-}
-
 document.addEventListener("DOMContentLoaded", () => {
     // Verifica se o usuário é administrador para mostrar o botão de voltar
     const btnAdmin = document.getElementById("btn-admin-dashboard");

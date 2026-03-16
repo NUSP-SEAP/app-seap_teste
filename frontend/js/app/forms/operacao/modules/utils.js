@@ -1,11 +1,6 @@
 // Funções utilitárias e helpers genéricos
 
 /**
- * Seleciona um único elemento no DOM (atalho para querySelector).
- */
-export const $ = (sel) => document.querySelector(sel);
-
-/**
  * Seleciona múltiplos elementos no DOM e retorna como Array (atalho para querySelectorAll).
  */
 export const $$ = (sel) => Array.from(document.querySelectorAll(sel));

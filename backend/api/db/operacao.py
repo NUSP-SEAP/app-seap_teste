@@ -3,7 +3,7 @@ import json
 from django.db import connection
 from typing import Any, Dict, List, Optional
 
-from .auth import fetchone_dict
+from .utils import fetchone_dict, fetchall_dicts
 
 def get_sessao_aberta_por_sala(sala_id: int) -> Optional[Dict[str, Any]]:
     """
@@ -37,47 +37,19 @@ def get_sessao_aberta_por_sala(sala_id: int) -> Optional[Dict[str, Any]]:
     """
     with connection.cursor() as cur:
         cur.execute(sql, [sala_id])
-        row = cur.fetchone()
-        if not row:
-            return None
-        return {
-            "id": row[0],
-            "data": row[1],
-            "sala_id": row[2],
-            "sala_nome": row[3],
-            "checklist_do_dia_id": row[4],
-            "checklist_do_dia_ok": row[5],
-        }
+        return fetchone_dict(cur)
 
 def insert_registro_operacao_audio(
     data_operacao: str,
-    nome_evento: Optional[str],
     sala_id: str,
-    horario_pauta: Optional[str],
-    hora_inicio: Optional[str],
-    hora_fim: Optional[str],
-    tipo_evento: Optional[str] = None,
-    houve_anormalidade: Optional[bool] = None,
-    observacoes: Optional[str] = None,
-    usb_01: Optional[str] = None,
-    usb_02: Optional[str] = None,
     criado_por: Optional[str] = None,
-    atualizado_por: Optional[str] = None,
-    checklist_do_dia_id: Optional[int] = None,
-    checklist_do_dia_ok: Optional[bool] = None,
 ) -> int:
     """
     Cria a SESSÃO de operação de áudio (registro da sala).
 
-    Importante:
-      - Os campos de evento (nome_evento, horários, tipo_evento, observações,
-        USBs, houve_anormalidade) agora pertencem à tabela
-        operacao.registro_operacao_operador.
-      - Esta função aceita esses parâmetros apenas por compatibilidade, mas
-        grava somente os dados da sessão (data/sala + controle em_aberto).
+    Descobre automaticamente o checklist do dia para a sala + data,
+    gravando checklist_do_dia_id e checklist_do_dia_ok.
     """
-
-    # Descobre, se existir, o checklist do dia para esta sala + data
     checklist_do_dia_id: Optional[int] = None
     checklist_do_dia_ok: Optional[bool] = None
 
@@ -87,8 +59,6 @@ def insert_registro_operacao_audio(
         sala_int = None
 
     if data_operacao and sala_int is not None:
-        # Pega o checklist mais recente (maior id) para a mesma data e sala
-        # e calcula se ele está "ok" (nenhuma resposta com status = 'Falha').
         sql_check = """
         SELECT c.id,
                NOT EXISTS (
@@ -106,13 +76,11 @@ def insert_registro_operacao_audio(
         try:
             with connection.cursor() as cur:
                 cur.execute(sql_check, [data_operacao, sala_int])
-                row = cur.fetchone()
+                row = fetchone_dict(cur)
             if row:
-                checklist_do_dia_id = int(row[0])
-                checklist_do_dia_ok = bool(row[1])
+                checklist_do_dia_id = int(row["id"])
+                checklist_do_dia_ok = bool(row["ok"])
         except Exception:
-            # Qualquer erro aqui (ex.: tabela inexistente) não deve impedir o insert;
-            # mantemos os campos como None.
             checklist_do_dia_id = None
             checklist_do_dia_ok = None
 
@@ -150,61 +118,6 @@ def insert_registro_operacao_audio(
         return int(new_id)
 
 
-def update_registro_operacao_audio(
-    registro_id: int,
-    data_operacao: str,
-    nome_evento: str,
-    horario_pauta: Optional[str],
-    hora_inicio: str,
-    hora_fim: Optional[str],
-    houve_anormalidade: bool,
-    observacoes: Optional[str],
-    usb_01: Optional[str] = None,
-    usb_02: Optional[str] = None,
-    atualizado_por: Optional[str] = None,
-) -> None:
-    """
-    Atualiza o cabeçalho de um registro de operação de áudio (registro da sala).
-
-    Esta função não altera sala_id nem tipo_evento; apenas campos de identificação
-    e resumo da sessão.
-
-    Strings de data/hora devem estar nos formatos aceitos pelo Postgres
-    (YYYY-MM-DD e HH:MM).
-    """
-    sql = """
-    UPDATE operacao.registro_operacao_audio
-       SET data = %s::date,
-           nome_evento = NULLIF(BTRIM(%s::text), '')::text,
-           horario_pauta = %s::time,
-           horario_inicio = %s::time,
-           horario_termino = %s::time,
-           houve_anormalidade = %s::boolean,
-           observacoes = NULLIF(BTRIM(%s::text), '')::text,
-           usb_01 = NULLIF(BTRIM(%s::text), '')::text,
-           usb_02 = NULLIF(BTRIM(%s::text), '')::text,
-           atualizado_por = %s::uuid
-     WHERE id = %s::bigint;
-    """
-    with connection.cursor() as cur:
-        cur.execute(
-            sql,
-            [
-                data_operacao,
-                nome_evento,
-                horario_pauta,
-                hora_inicio,
-                hora_fim,
-                houve_anormalidade,
-                observacoes or "",
-                usb_01 or "",
-                usb_02 or "",
-                atualizado_por,
-                registro_id,
-            ],
-        )
-
-        
 def listar_entradas_da_sessao(registro_id: int) -> List[Dict[str, Any]]:
     """
     Lista todas as entradas (operadores) de uma sessão.
@@ -247,35 +160,7 @@ def listar_entradas_da_sessao(registro_id: int) -> List[Dict[str, Any]]:
     """
     with connection.cursor() as cur:
         cur.execute(sql, [registro_id])
-        rows = cur.fetchall()
-
-    result: List[Dict[str, Any]] = []
-    for row in rows:
-        result.append(
-            {
-                "id": row[0],
-                "registro_id": row[1],
-                "operador_id": row[2],
-                "operador_nome": row[3],
-                "ordem": row[4],
-                "seq": row[5],
-                "nome_evento": row[6],
-                "horario_pauta": row[7],
-                "horario_inicio": row[8],
-                "horario_termino": row[9],
-                "tipo_evento": row[10],
-                "usb_01": row[11],
-                "usb_02": row[12],
-                "observacoes": row[13],
-                "houve_anormalidade": row[14],
-                "anormalidade_id": row[15],
-                "comissao_id": row[16],
-                "responsavel_evento": row[17],
-                "hora_entrada": row[18],
-                "hora_saida": row[19],
-            }
-        )
-    return result
+        return fetchall_dicts(cur)
 
 def insert_registro_operacao_operador(
     registro_id: int,
@@ -289,7 +174,6 @@ def insert_registro_operacao_operador(
     horario_termino: Optional[str],
     tipo_evento: str,
     seq: int,
-    houve_anormalidade: Optional[bool],  # ignorado, mantido por compatibilidade
     observacoes: Optional[str],
     usb_01: Optional[str],
     usb_02: Optional[str],
@@ -301,9 +185,8 @@ def insert_registro_operacao_operador(
     """
     Insere uma ENTRADA de operador na sessão de operação de áudio.
 
-    Observação importante:
-      - A coluna houve_anormalidade agora é controlada pelo trigger
-        operacao.sync_houve_anormalidade (tabela operacao.registro_anormalidade).
+    houve_anormalidade é controlada pelo trigger
+    operacao.sync_houve_anormalidade (tabela operacao.registro_anormalidade).
     """
     sql = """
     INSERT INTO operacao.registro_operacao_operador (
@@ -359,18 +242,17 @@ def insert_registro_operacao_operador(
                 ordem,
                 hora_entrada,
                 hora_saida,
-                nome_evento or "",
+                nome_evento,
                 horario_pauta,
                 horario_inicio,
                 horario_termino,
                 tipo_evento,
                 seq,
-                # houve_anormalidade fica sempre FALSE no SQL
-                observacoes or "",
-                usb_01 or "",
-                usb_02 or "",
+                observacoes,
+                usb_01,
+                usb_02,
                 comissao_id,
-                responsavel_evento or "",
+                responsavel_evento,
                 criado_por,
                 atualizado_por,
             ],
@@ -386,7 +268,6 @@ def update_registro_operacao_operador(
     horario_inicio: Optional[str],
     horario_termino: Optional[str],
     tipo_evento: str,
-    houve_anormalidade: Optional[bool],  # ignorado
     observacoes: Optional[str],
     usb_01: Optional[str],
     usb_02: Optional[str],
@@ -399,8 +280,7 @@ def update_registro_operacao_operador(
     """
     Atualiza uma entrada de operador em operacao.registro_operacao_operador.
 
-    Observação:
-      - Não atualizamos mais houve_anormalidade aqui (controlado por trigger).
+    houve_anormalidade é controlada por trigger, não atualizada aqui.
     """
     sql = """
     UPDATE operacao.registro_operacao_operador
@@ -424,17 +304,16 @@ def update_registro_operacao_operador(
         cur.execute(
             sql,
             [
-                nome_evento or "",
+                nome_evento,
                 horario_pauta,
                 horario_inicio,
                 horario_termino,
                 tipo_evento,
-                # houve_anormalidade é ignorado
-                observacoes or "",
-                usb_01 or "",
-                usb_02 or "",
+                observacoes,
+                usb_01,
+                usb_02,
                 comissao_id,
-                responsavel_evento or "",
+                responsavel_evento,
                 hora_entrada,
                 hora_saida,
                 atualizado_por,
@@ -442,23 +321,6 @@ def update_registro_operacao_operador(
             ],
         )
 
-
-def set_houve_anormalidade_entrada(
-    entrada_id: int,
-    houve_anormalidade: bool,
-    atualizado_por: Optional[str] = None,
-) -> None:
-    """
-    Atualiza apenas o flag 'houve_anormalidade' de uma entrada do operador.
-    """
-    sql = """
-        UPDATE operacao.registro_operacao_operador
-           SET houve_anormalidade = %s::boolean,
-               atualizado_por     = %s::uuid
-         WHERE id = %s::bigint;
-    """
-    with connection.cursor() as cur:
-        cur.execute(sql, [houve_anormalidade, atualizado_por, entrada_id])
 
 def finalizar_sessao_operacao_audio(
     registro_id: int,
@@ -487,6 +349,9 @@ def get_entrada_operacao_snapshot(entrada_id: int) -> Dict[str, Any]:
     """
     Captura o estado atual completo de uma entrada de operador
     para armazenamento no histórico antes de uma edição.
+
+    Retorna dict com tipos nativos do PostgreSQL; o chamador
+    serializa com json.dumps(snapshot, default=str).
     """
     with connection.cursor() as cur:
         cur.execute("""
@@ -499,15 +364,7 @@ def get_entrada_operacao_snapshot(entrada_id: int) -> Dict[str, Any]:
               JOIN operacao.registro_operacao_audio r ON r.id = e.registro_id
              WHERE e.id = %s::bigint
         """, [entrada_id])
-        cols = [c[0] for c in cur.description]
-        row = cur.fetchone()
-        snap = dict(zip(cols, row)) if row else {}
-        for k, v in snap.items():
-            if hasattr(v, 'isoformat'):
-                snap[k] = v.isoformat()
-            elif v is not None:
-                snap[k] = str(v) if not isinstance(v, (bool, int)) else v
-    return snap
+        return fetchone_dict(cur) or {}
 
 
 def insert_entrada_operacao_historico(
@@ -599,31 +456,22 @@ def update_entrada_operacao_detalhe(
          WHERE id = %s::bigint
     """
     with connection.cursor() as cur:
+        ne = campos.get("nome_evento")
+        re = campos.get("responsavel_evento")
+        hp = campos.get("horario_pauta")
+        hi = campos.get("horario_inicio")
+        ht = campos.get("horario_termino")
+        u1 = campos.get("usb_01")
+        u2 = campos.get("usb_02")
+        ob = campos.get("observacoes")
+        ci = campos.get("comissao_id")
+        te = campos.get("tipo_evento", "operacao")
+        he = campos.get("hora_entrada")
+        hs = campos.get("hora_saida")
         cur.execute(sql, [
-            campos.get("nome_evento") or "",
-            campos.get("responsavel_evento") or "",
-            campos.get("horario_pauta"),
-            campos.get("horario_inicio"),
-            campos.get("horario_termino"),
-            campos.get("usb_01") or "",
-            campos.get("usb_02") or "",
-            campos.get("observacoes") or "",
-            campos.get("comissao_id"),
-            campos.get("tipo_evento", "operacao"),
-            campos.get("hora_entrada"),
-            campos.get("hora_saida"),
-            # IS DISTINCT FROM comparisons:
-            campos.get("nome_evento") or "",
-            campos.get("responsavel_evento") or "",
-            campos.get("horario_pauta"),
-            campos.get("horario_inicio"),
-            campos.get("horario_termino"),
-            campos.get("usb_01") or "",
-            campos.get("usb_02") or "",
-            campos.get("observacoes") or "",
-            campos.get("comissao_id"),
-            campos.get("hora_entrada"),
-            campos.get("hora_saida"),
+            ne, re, hp, hi, ht, u1, u2, ob, ci, te, he, hs,
+            # IS DISTINCT FROM comparisons (mesmos valores):
+            ne, re, hp, hi, ht, u1, u2, ob, ci, he, hs,
             atualizado_por,
             entrada_id,
         ])
@@ -679,3 +527,29 @@ def count_entradas_por_sessao(entrada_id: int) -> int:
         """, [entrada_id])
         row = cur.fetchone()
         return int(row[0]) if row else 0
+
+
+def get_registro_id_by_entrada(entrada_id: int) -> Optional[int]:
+    """
+    Retorna o registro_id (sessão) de uma entrada de operador.
+    """
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT registro_id FROM operacao.registro_operacao_operador WHERE id = %s::bigint",
+            [entrada_id],
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else None
+
+
+def get_operador_id_by_entrada(entrada_id: int) -> Optional[str]:
+    """
+    Retorna o operador_id de uma entrada de operador (para verificação de ownership).
+    """
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT operador_id FROM operacao.registro_operacao_operador WHERE id = %s::bigint",
+            [entrada_id],
+        )
+        row = cur.fetchone()
+        return str(row[0]) if row else None

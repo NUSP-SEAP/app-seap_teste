@@ -1,8 +1,8 @@
 // app/js/app/forms/operacao/index/actions.js
 // Ações do usuário e processamento (Salvar, Editar, Finalizar, Carregar Estado)
 
-import { safeJson, ensureHojeEmDataOperacao } from './utils.js';
-import { globalState, getTipoEventoSelecionado } from './state.js';
+import { safeJson } from './utils.js';
+import { globalState, getTipoEventoSelecionado, REGEX_AUDITORIO, REGEX_PLENARIO } from './state.js';
 import {
     aplicarEstadoSessaoNaUI,
     atualizarCabecalhoOperadoresSessao,
@@ -176,8 +176,8 @@ export async function salvarEntrada(modo, elements, opcoes) {
     if (comissaoSelect && salaSelect && salaId) {
         const optSala = salaSelect.options[salaSelect.selectedIndex] || null;
         const textoSala = ((optSala && (optSala.textContent || optSala.innerText || optSala.label)) || "").toLowerCase();
-        const isAuditorio = /audit[oó]rio/.test(textoSala);
-        const isPlenario = /plen[áa]rio(?!\s*\d)/.test(textoSala);
+        const isAuditorio = REGEX_AUDITORIO.test(textoSala);
+        const isPlenario = REGEX_PLENARIO.test(textoSala);
         const exigeTipo = !isAuditorio && !isPlenario;
 
         if (exigeTipo && !comissaoSelect.value) {
@@ -332,103 +332,3 @@ export async function salvarEntrada(modo, elements, opcoes) {
     }
 }
 
-// =============================================================================
-// Finalizar Sessão
-// =============================================================================
-
-// export async function finalizarSessao(elements) {
-//     const { salaSelect, btnFinalizarSessao, form, dataOperacaoInput } = elements;
-
-//     if (!salaSelect || !salaSelect.value) {
-//         alert("Selecione uma sala antes de finalizar o registro da operação.");
-//         return;
-//     }
-
-//     const salaId = salaSelect.value;
-
-//     // Sempre recarrega o estado da sessão para esta sala
-//     await carregarEstadoSessao(salaId, elements);
-
-//     const { estadoSessao, uiState } = globalState;
-//     const sessaoAberta = !!(estadoSessao && estadoSessao.existe_sessao_aberta);
-
-//     // Preferência: se o back já mandou situacao_operador, usamos,
-//     // senão usamos o valor derivado que está em uiState.
-//     let situacaoOperador = "sem_sessao";
-//     if (estadoSessao && estadoSessao.situacao_operador) {
-//         situacaoOperador = estadoSessao.situacao_operador;
-//     } else if (uiState && uiState.situacao_operador) {
-//         situacaoOperador = uiState.situacao_operador;
-//     }
-
-//     // Mesma regra do index.js original:
-//     // só pode finalizar se existir sessão aberta
-//     // E o operador tiver pelo menos um registro.
-//     if (!sessaoAberta || situacaoOperador === "sem_entrada") {
-//         alert("Somente usuários com registro nesta sala/operação podem finalizar.");
-//         return;
-//     }
-
-//     const payload = { sala_id: salaId };
-
-//     try {
-//         if (btnFinalizarSessao) {
-//             btnFinalizarSessao.disabled = true;
-//             btnFinalizarSessao.textContent = "Finalizando...";
-//         }
-
-//         let resp;
-//         const options = {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify(payload),
-//         };
-
-//         if (window.Auth && typeof Auth.authFetch === "function") {
-//             resp = await Auth.authFetch(FINALIZAR_SESSAO_URL, options);
-//         } else {
-//             resp = await fetch(FINALIZAR_SESSAO_URL, options);
-//         }
-
-//         const json = await safeJson(resp);
-//         if (!resp.ok || !json || json.ok === false) {
-//             const msg =
-//                 (json && (json.message || json.detail || json.error)) ||
-//                 "Falha ao finalizar o registro da sala/operação.";
-//             alert(msg);
-//             return;
-//         }
-
-//         alert("Registro da Sala/Operação finalizado com sucesso.");
-
-//         // Depois de finalizar, voltamos para o estado "sem sala"
-//         globalState.modoEdicaoEntradaSeq = null;
-
-//         if (form) {
-//             form.reset();
-//         }
-
-//         if (salaSelect) {
-//             salaSelect.value = "";
-//         }
-
-//         globalState.estadoSessao = null;
-//         globalState.uiState.situacao_operador = "sem_sessao";
-//         globalState.uiState.sessaoAberta = false;
-
-//         // Garante a mesma compatibilidade do index.js original
-//         ensureHojeEmDataOperacao(dataOperacaoInput);
-
-//         // Reaplica bloqueios / visuais para o estado "sem sala"
-//         aplicarEstadoSessaoNaUI(elements, globalState);
-//     } catch (e) {
-//         console.error("Erro inesperado ao finalizar sessão:", e);
-//         alert("Erro inesperado ao finalizar a sessão.");
-//     } finally {
-//         if (btnFinalizarSessao) {
-//             btnFinalizarSessao.disabled = false;
-//             btnFinalizarSessao.textContent =
-//                 "Finalizar Registro da Sala/Operação";
-//         }
-//     }
-// }

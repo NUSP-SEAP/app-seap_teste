@@ -11,6 +11,49 @@
         startTime: null     // Data/Hora de início (Auditável, invisível)
     };
 
+    // ====== Persistência (localStorage) ======
+    const DRAFT_KEY = 'checklist_draft';
+    const DRAFT_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 horas
+
+    function saveDraft(currentStep) {
+        try {
+            const draft = {
+                salaId: state.salaId,
+                salaNome: state.salaNome,
+                itens: state.itens,
+                currentIndex: state.currentIndex,
+                respostas: state.respostas,
+                startTime: state.startTime ? state.startTime.toISOString() : null,
+                currentStep: currentStep, // 'wizard' ou 'finish'
+                savedAt: Date.now()
+            };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch (e) {
+            console.warn('Falha ao salvar rascunho:', e);
+        }
+    }
+
+    function loadDraft() {
+        try {
+            const raw = localStorage.getItem(DRAFT_KEY);
+            if (!raw) return null;
+            const draft = JSON.parse(raw);
+            // Descarta se tiver mais de 24h
+            if (Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) {
+                clearDraft();
+                return null;
+            }
+            return draft;
+        } catch (e) {
+            clearDraft();
+            return null;
+        }
+    }
+
+    function clearDraft() {
+        try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignora */ }
+    }
+
     // ====== UI Helpers ======
     const $ = (id) => document.getElementById(id);
 
@@ -295,6 +338,7 @@
         // Avança
         if (state.currentIndex < state.itens.length - 1) {
             state.currentIndex++;
+            saveDraft('wizard');
             renderCurrentItem();
         } else {
             finishWizardFlow();
@@ -317,6 +361,7 @@
 
     // --- Tela Final ---
     function finishWizardFlow() {
+        saveDraft('finish');
         $("step-wizard").classList.add("hidden");
         $("step-finish").classList.remove("hidden");
         setTimeout(() => $("observacoes").focus(), 100);
@@ -375,6 +420,7 @@
             const json = await resp.json().catch(() => ({}));
 
             if (resp.ok && json.ok) {
+                clearDraft();
                 alert("Checklist salvo com sucesso!");
                 window.location.href = "/home.html";
             } else {
@@ -399,6 +445,37 @@
         if (dateInput) dateInput.valueAsDate = new Date();
 
         await loadSalas();
+
+        // Restaura rascunho (se existir e tiver menos de 24h)
+        const draft = loadDraft();
+        if (draft && draft.salaId && draft.itens && draft.itens.length > 0) {
+            // Restaura estado
+            state.salaId = draft.salaId;
+            state.salaNome = draft.salaNome;
+            state.itens = draft.itens;
+            state.currentIndex = draft.currentIndex || 0;
+            state.respostas = draft.respostas || {};
+            state.startTime = draft.startTime ? new Date(draft.startTime) : null;
+
+            // Seleciona a sala no dropdown
+            const selSalaEl = $("sala_id");
+            if (selSalaEl) selSalaEl.value = String(draft.salaId);
+
+            // Exibe o passo correto
+            if (draft.currentStep === 'finish') {
+                $("step-setup").classList.add("hidden");
+                $("step-finish").classList.remove("hidden");
+                $("wizard-sala-nome").textContent = state.salaNome;
+            } else {
+                // wizard
+                $("step-setup").classList.add("hidden");
+                $("step-wizard").classList.remove("hidden");
+                $("wizard-sala-nome").textContent = state.salaNome;
+                const elTotal = $("wizard-total");
+                if (elTotal) elTotal.textContent = state.itens.length;
+                renderCurrentItem();
+            }
+        }
 
         // Listeners Setup
         const selSala = $("sala_id");

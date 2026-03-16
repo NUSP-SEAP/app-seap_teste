@@ -12,7 +12,7 @@ urlpatterns = [
         name="auth_html_guard",
     ),
 
-    # Lookups (uso direto e via /webhook/)
+    # Lookups (uso direto e via /api/)
     path("forms/lookup/operadores", views.lookup_operadores, name="lookup_operadores"),
     path("forms/lookup/salas", views.lookup_salas, name="lookup_salas"),
     path(
@@ -27,8 +27,8 @@ urlpatterns = [
     ),
 
     # Admin
-    path("admin/operadores/novo", views.admin_operador_novo, name="admin_operador_novo"),
-    path("admin/admins/novo", views.admin_administrador_novo, name="admin_administrador_novo"),
+    path("admin/operadores/novo", views.admin.admin_operador_novo, name="admin_operador_novo"),
+    path("admin/admins/novo", views.admin.admin_administrador_novo, name="admin_administrador_novo"),
     path(
         "admin/dashboard/operadores",
         views.admin.dashboard_operadores_view,
@@ -94,7 +94,7 @@ urlpatterns = [
     path(
         "admin/dashboard/operacoes/entradas",
         views.admin.dashboard_operacoes_entradas_view,
-        name="admin_dashboard_operacoes_entradas"
+        name="admin_dashboard_operacoes_entradas",
     ),
     path(
         "admin/anormalidade/detalhe",

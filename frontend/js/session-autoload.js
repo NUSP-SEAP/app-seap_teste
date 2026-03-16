@@ -80,9 +80,8 @@
     if (!b || b.dataset.bound === '1') return;
     b.addEventListener('click', function (ev) {
       ev.preventDefault();
-      if (window.doServerLogout) return doServerLogout();        // 1º: legado compatível
-      if (window.Auth && Auth.doLogout) return Auth.doLogout();  // 2º: server-first unificado
-      location.href = '/index.html';                             // fallback
+      if (window.Auth && Auth.doLogout) return Auth.doLogout();
+      location.href = '/index.html';
     });
     b.dataset.bound = '1';
   }

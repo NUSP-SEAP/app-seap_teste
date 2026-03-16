@@ -68,19 +68,6 @@
         }
     };
 
-    // Helper para formatar data (YYYY-MM-DD -> DD/MM/YYYY)
-    const fmtDate = (d) => {
-        if (!d) return "";
-        const parts = String(d).split("-");
-        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
-    };
-
-    // Helper para formatar hora (HH:MM:SS -> HH:MM)
-    const fmtTime = (t) => {
-        if (!t) return "";
-        return String(t).substring(0, 5);
-    };
-
     async function loadData() {
         const url = `${AppConfig.apiUrl(AppConfig.endpoints.adminDashboard.detalheOperacao)}?entrada_id=${entradaId}`;
 

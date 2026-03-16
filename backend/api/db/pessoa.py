@@ -1,34 +1,25 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from django.db import connection
 
+from .utils import fetchone_dict
 
-# ========= OPERADOR =========
+# Tabelas validas para exists_user (whitelist para evitar SQL injection)
+_VALID_TABLES = {"pessoa.operador", "pessoa.administrador"}
+_VALID_FIELDS = {"email", "username"}
 
-def exists_operador_email(email: str) -> bool:
-    sql = """
-        SELECT EXISTS(
-            SELECT 1
-              FROM pessoa.operador
-             WHERE lower(email) = lower(%s)
-        );
-    """
+
+def exists_user(table: str, field: str, value: str) -> bool:
+    """Verifica se ja existe um usuario com o campo/valor na tabela especificada."""
+    if table not in _VALID_TABLES:
+        raise ValueError(f"Tabela invalida: {table}")
+    if field not in _VALID_FIELDS:
+        raise ValueError(f"Campo invalido: {field}")
+    sql = f"SELECT EXISTS(SELECT 1 FROM {table} WHERE lower({field}) = lower(%s));"
     with connection.cursor() as cur:
-        cur.execute(sql, [email])
+        cur.execute(sql, [value])
         return bool(cur.fetchone()[0])
 
-
-def exists_operador_username(username: str) -> bool:
-    sql = """
-        SELECT EXISTS(
-            SELECT 1
-              FROM pessoa.operador
-             WHERE lower(username) = lower(%s)
-        );
-    """
-    with connection.cursor() as cur:
-        cur.execute(sql, [username])
-        return bool(cur.fetchone()[0])
 
 
 def insert_operador(
@@ -41,12 +32,7 @@ def insert_operador(
 ) -> Dict[str, str]:
     sql = """
         INSERT INTO pessoa.operador (
-            nome_completo,
-            nome_exibicao,
-            email,
-            username,
-            password_hash,
-            foto_url
+            nome_completo, nome_exibicao, email, username, password_hash, foto_url
         )
         VALUES (
             %s::text,
@@ -57,63 +43,24 @@ def insert_operador(
             NULLIF(BTRIM(%s::text), '')
         )
         RETURNING
-            id::text,
-            nome_completo::text,
-            nome_exibicao::text,
-            email::text,
-            username::text,
-            COALESCE(foto_url, '')::text;
+            id::text, nome_completo::text, nome_exibicao::text,
+            email::text, username::text, COALESCE(foto_url, '')::text AS foto_url;
     """
     with connection.cursor() as cur:
         cur.execute(sql, [nome_completo, nome_exibicao, email, username, password_hash, foto_url or ""])
-        r = cur.fetchone()
-        return {
-            "id": r[0],
-            "nome_completo": r[1],
-            "nome_exibicao": r[2],
-            "email": r[3],
-            "username": r[4],
-            "foto_url": r[5],
-        }
+        return fetchone_dict(cur)
+
 
 def get_foto_url_by_id(user_id: str, role: str) -> str:
-    """Retorna a foto_url do usuário (operador ou administrador). Vazia se não encontrar."""
+    """Retorna a foto_url do usuario (operador ou administrador). Vazia se nao encontrar."""
     if role == "operador":
-        sql = "SELECT COALESCE(foto_url, '')::text FROM pessoa.operador WHERE id = %s::uuid;"
+        sql = "SELECT COALESCE(foto_url, '')::text AS foto_url FROM pessoa.operador WHERE id = %s::uuid;"
     else:
         return ""
     with connection.cursor() as cur:
         cur.execute(sql, [user_id])
         row = cur.fetchone()
         return row[0] if row else ""
-
-
-# ========= ADMINISTRADOR =========
-
-def exists_admin_email(email: str) -> bool:
-    sql = """
-        SELECT EXISTS(
-            SELECT 1
-              FROM pessoa.administrador
-             WHERE lower(email) = lower(%s)
-        );
-    """
-    with connection.cursor() as cur:
-        cur.execute(sql, [email])
-        return bool(cur.fetchone()[0])
-
-
-def exists_admin_username(username: str) -> bool:
-    sql = """
-        SELECT EXISTS(
-            SELECT 1
-              FROM pessoa.administrador
-             WHERE lower(username) = lower(%s)
-        );
-    """
-    with connection.cursor() as cur:
-        cur.execute(sql, [username])
-        return bool(cur.fetchone()[0])
 
 
 def insert_administrador(
@@ -124,10 +71,7 @@ def insert_administrador(
 ) -> Dict[str, str]:
     sql = """
         INSERT INTO pessoa.administrador (
-            nome_completo,
-            email,
-            username,
-            password_hash
+            nome_completo, email, username, password_hash
         )
         VALUES (
             %s::text,
@@ -136,17 +80,8 @@ def insert_administrador(
             %s::text
         )
         RETURNING
-            id::text,
-            nome_completo::text,
-            email::text,
-            username::text;
+            id::text, nome_completo::text, email::text, username::text;
     """
     with connection.cursor() as cur:
         cur.execute(sql, [nome_completo, email, username, password_hash])
-        r = cur.fetchone()
-        return {
-            "id": r[0],
-            "nome_completo": r[1],
-            "email": r[2],
-            "username": r[3],
-        }
+        return fetchone_dict(cur)

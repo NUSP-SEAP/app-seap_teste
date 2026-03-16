@@ -2,7 +2,7 @@
 // Parte 1: Configuração inicial, visibilidade de seções e resets
 
 import { ensureHojeEmDataOperacao, $$ } from './utils.js';
-import { globalState } from './state.js';
+import { globalState, derivarSituacaoOperador, REGEX_AUDITORIO, REGEX_PLENARIO } from './state.js';
 
 // =============================================================================
 // Evento Encerrado: controla hora_fim, hora_entrada, hora_saida
@@ -116,7 +116,7 @@ export function setupOperatorsUI(elements) {
 // Lógica de Visibilidade: Tipo de Evento e Anormalidade
 // =============================================================================
 
-export function atualizarTipoEventoUI(sectionAnormalidade) {
+function atualizarTipoEventoUI(sectionAnormalidade) {
     // Nova regra: "Houve anormalidade?" sempre visível.
     if (!sectionAnormalidade) return;
 
@@ -185,8 +185,8 @@ export function atualizarVisibilidadeTipoPorSala(salaSelect, comissaoSelect) {
         ""
     ).toLowerCase();
 
-    const isAuditorio = /audit[oó]rio/.test(textoSala);
-    const isPlenario = /plen[áa]rio(?!\s*\d)/.test(textoSala);
+    const isAuditorio = REGEX_AUDITORIO.test(textoSala);
+    const isPlenario = REGEX_PLENARIO.test(textoSala);
 
     if (isAuditorio || isPlenario) {
         // Auditório ou Plenário → "Tipo" fica oculto e desabilitado
@@ -235,13 +235,11 @@ export function resetFormMantendoSalaETipo(elements) {
     aplicarRegrasEventoEncerrado(elements, globalState.uiState.sessaoAberta);
 }
 
-import { derivarSituacaoOperador } from './state.js';
-
 // =============================================================================
 // Cabeçalhos e Indicadores
 // =============================================================================
 
-export function atualizarIndicadorModoEdicao(modoEl, estadoSessao, modoEdicaoEntradaSeq) {
+function atualizarIndicadorModoEdicao(modoEl, estadoSessao, modoEdicaoEntradaSeq) {
     if (!modoEl) return;
 
     // Se não há sessão aberta, esconde o indicador
@@ -284,66 +282,36 @@ export function atualizarCabecalhoOperadoresSessao(headerEl, modoEl, estadoSessa
         ? estadoSessao.entradas_sessao.slice()
         : [];
 
-    // Fallback: nomes_operadores_sessao
-    if (!entradas.length) {
-        const nomesFallback = Array.isArray(estadoSessao.nomes_operadores_sessao)
+    // Normaliza para array de nomes: usa entradas_sessao (com ordenação) ou fallback por strings
+    let nomes;
+    if (entradas.length) {
+        entradas.sort((a, b) => {
+            const oa = typeof a.ordem === "number" ? a.ordem : parseInt(a.ordem || a.seq || 0, 10);
+            const ob = typeof b.ordem === "number" ? b.ordem : parseInt(b.ordem || b.seq || 0, 10);
+            if (oa !== ob) return oa - ob;
+            return (a.entrada_id || a.id || 0) - (b.entrada_id || b.id || 0);
+        });
+        nomes = entradas.map(e => (e && e.operador_nome) ? e.operador_nome : "—");
+    } else {
+        nomes = Array.isArray(estadoSessao.nomes_operadores_sessao)
             ? estadoSessao.nomes_operadores_sessao
             : [];
+    }
 
-        if (!nomesFallback.length) {
-            headerEl.style.display = "none";
-            headerEl.textContent = "";
-            atualizarIndicadorModoEdicao(modoEl, estadoSessao, modoEdicaoEntradaSeq);
-            return;
-        }
-
-        const linhasFallback = [];
-        linhasFallback.push("Registro aberto por " + nomesFallback[0] + ".");
-
-        const ordinaisFallback = { 2: "Segundo", 3: "Terceiro", 4: "Quarto", 5: "Quinto", 6: "Sexto", 7: "Sétimo", 8: "Oitavo", 9: "Nono", 10: "Décimo" };
-        const descricoesFallback = [];
-        for (let i = 1; i < nomesFallback.length; i++) {
-            const posicao = i + 1;
-            const prefixo = ordinaisFallback[posicao] || posicao + "º";
-            descricoesFallback.push(prefixo + " registro feito por " + nomesFallback[i]);
-        }
-        for (let j = 0; j < descricoesFallback.length; j += 2) {
-            if (j + 1 < descricoesFallback.length) {
-                linhasFallback.push(descricoesFallback[j] + " • " + descricoesFallback[j + 1]);
-            } else {
-                linhasFallback.push(descricoesFallback[j]);
-            }
-        }
-        headerEl.innerHTML = linhasFallback.join("<br>");
-        headerEl.style.display = "";
+    if (!nomes.length) {
+        headerEl.style.display = "none";
+        headerEl.textContent = "";
         atualizarIndicadorModoEdicao(modoEl, estadoSessao, modoEdicaoEntradaSeq);
         return;
     }
 
-    // Ordenação real
-    entradas.sort((a, b) => {
-        const oa = typeof a.ordem === "number" ? a.ordem : parseInt(a.ordem || a.seq || 0, 10);
-        const ob = typeof b.ordem === "number" ? b.ordem : parseInt(b.ordem || b.seq || 0, 10);
-        if (oa !== ob) return oa - ob;
-        const ea = a.entrada_id || a.id || 0;
-        const eb = b.entrada_id || b.id || 0;
-        return ea - eb;
-    });
-
-    const linhas = [];
-    const ordinais = { 1: "Primeiro", 2: "Segundo", 3: "Terceiro", 4: "Quarto", 5: "Quinto", 6: "Sexto", 7: "Sétimo", 8: "Oitavo", 9: "Nono", 10: "Décimo" };
-
-    const primeira = entradas[0];
-    const nomePrimeiro = primeira && primeira.operador_nome ? primeira.operador_nome : "—";
-    linhas.push("Registro aberto por " + nomePrimeiro + ".");
-
+    const ordinais = { 2: "Segundo", 3: "Terceiro", 4: "Quarto", 5: "Quinto", 6: "Sexto", 7: "Sétimo", 8: "Oitavo", 9: "Nono", 10: "Décimo" };
+    const linhas = ["Registro aberto por " + nomes[0] + "."];
     const descricoes = [];
-    for (let i = 1; i < entradas.length; i++) {
-        const entrada = entradas[i];
+    for (let i = 1; i < nomes.length; i++) {
         const posicao = i + 1;
         const prefixo = ordinais[posicao] || posicao + "º";
-        const nome = entrada && entrada.operador_nome ? entrada.operador_nome : "—";
-        descricoes.push(prefixo + " registro feito por " + nome);
+        descricoes.push(prefixo + " registro feito por " + nomes[i]);
     }
     for (let j = 0; j < descricoes.length; j += 2) {
         if (j + 1 < descricoes.length) {
@@ -362,7 +330,7 @@ export function atualizarCabecalhoOperadoresSessao(headerEl, modoEl, estadoSessa
 // Bloqueios e Estados de Campos
 // =============================================================================
 
-export function aplicarBloqueioPorSala(elements) {
+function aplicarBloqueioPorSala(elements) {
     const {
         form, salaSelect, comissaoSelect, btnLimpar, btnSalvarRegistro,
         btnSalvarEdicao, btnVoltar
@@ -402,7 +370,7 @@ export function aplicarBloqueioPorSala(elements) {
     atualizarVisibilidadeTipoPorSala(salaSelect, comissaoSelect);
 }
 
-export function aplicarModoOperadorComDuasEntradas(elements) {
+function aplicarModoOperadorComDuasEntradas(elements) {
     const { form, salaSelect, btnSalvarRegistro, btnSalvarEdicao, btnLimpar, btnCancelarEdicao, btnEditarEntrada1, btnEditarEntrada2 } = elements;
     if (!form) return;
 
@@ -808,8 +776,8 @@ function bloquearCabecalhoSeSessaoAberta(elements, estadoSessao) {
             ""
         ).toLowerCase();
 
-        isAuditorio = /audit[oó]rio/.test(textoSala);
-        isPlenario = /plen[áa]rio(?!\s*\d)/.test(textoSala);
+        isAuditorio = REGEX_AUDITORIO.test(textoSala);
+        isPlenario = REGEX_PLENARIO.test(textoSala);
     }
 
     const val = estadoSessao.comissao_id;

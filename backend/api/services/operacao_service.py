@@ -1,22 +1,79 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from django.db import transaction
 
 from api.db import operacao as db
+from .exceptions import ServiceValidationError
+from .utils import clean_str
 
 
-class ServiceValidationError(Exception):
+# ──────────────────────────────────────────────
+#  Helpers privados
+# ──────────────────────────────────────────────
+
+def _normalizar_tipo_evento(raw: str) -> str:
+    """Normaliza tipo_evento para um dos 3 valores canônicos.
+
+    Reconhece sinônimos PT-BR e retorna 'operacao', 'cessao' ou 'outros'.
+    Retorna None se o valor é inválido (para que o chamador lance erro).
     """
-    Erro de validação de regra de negócio.
-    As views vão capturar isso e devolver HTTP 400.
-    """
+    norm = (raw or "").strip().lower()
+    if not norm or norm in ("operacao", "operação comum", "operacao comum", "operacao_comum"):
+        return "operacao"
+    if norm in ("cessao", "cessão de sala", "cessao de sala", "cessao_sala"):
+        return "cessao"
+    if norm in ("outros", "outros eventos", "outros_eventos"):
+        return "outros"
+    return ""  # inválido — chamador decide o que fazer
 
-    def __init__(self, code: str, message: str, extra: Optional[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.extra = extra or {}
+
+def _validar_campos_basicos_operacao(payload: dict) -> Dict[str, str]:
+    """Valida campos básicos obrigatórios de operação de áudio.
+
+    Retorna dict de erros (vazio se OK).
+    """
+    errors: Dict[str, str] = {}
+    if not clean_str(payload, "data_operacao"):
+        errors["data_operacao"] = "Campo obrigatório."
+    if not clean_str(payload, "sala_id"):
+        errors["sala_id"] = "Campo obrigatório."
+    if not clean_str(payload, "nome_evento"):
+        errors["nome_evento"] = "Campo obrigatório."
+    if not clean_str(payload, "hora_inicio"):
+        errors["hora_inicio"] = "Campo obrigatório."
+    return errors
+
+
+def _parse_sala_id(raw: str) -> int:
+    """Converte sala_id para int ou lança ServiceValidationError."""
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        raise ServiceValidationError(
+            code="validation_error",
+            message="Local inválido.",
+            extra={"errors": {"sala_id": "Local inválido."}},
+        )
+
+
+def _parse_comissao_id(body: dict) -> Optional[int]:
+    """Extrai e converte comissao_id do payload."""
+    raw = body.get("comissao_id")
+    if raw is None:
+        return None
+    raw_str = str(raw).strip() if isinstance(raw, (str, int)) else ""
+    if not raw_str:
+        return None
+    try:
+        return int(raw_str)
+    except ValueError:
+        return None
+
+
+# ──────────────────────────────────────────────
+#  Dataclasses de contexto
+# ──────────────────────────────────────────────
 
 @dataclass
 class SessaoOperacaoContextEntrada:
@@ -57,12 +114,22 @@ class SessaoOperacaoContext:
     nomes_operadores_sessao: List[str]
 
 
-
 @dataclass
 class RegistroOperacaoAudioResult:
     registro_id: int
     houve_anormalidade: bool
 
+
+@dataclass
+class EntradaOperacaoEditResult:
+    entrada_id: int
+    registro_id: int
+    houve_anormalidade_nova: bool  # True se mudou de false→true
+
+
+# ──────────────────────────────────────────────
+#  Registro de operação (criação de sessão)
+# ──────────────────────────────────────────────
 
 def registrar_operacao_audio(
     payload: Dict[str, Any],
@@ -73,111 +140,49 @@ def registrar_operacao_audio(
     mas agora já entendendo Tipo do Evento e aplicando a regra:
     - Anormalidade só existe em Operação Comum.
     """
-
-    def _s(key: str, default: str = "") -> str:
-        return (str(payload.get(key, default)) or "").strip()
-
     # 1) Leitura / normalização dos campos básicos
-    data_operacao = _s("data_operacao")
-    horario_pauta = _s("horario_pauta")
-    hora_inicio = _s("hora_inicio")
-    hora_fim = _s("hora_fim")
-    sala_id_raw = _s("sala_id")
-    nome_evento = _s("nome_evento")
-    observacoes = _s("observacoes")
-    usb_01 = _s("usb_01")
-    usb_02 = _s("usb_02")
+    data_operacao = clean_str(payload, "data_operacao")
+    sala_id_raw = clean_str(payload, "sala_id")
+    houve_anormalidade_raw = clean_str(payload, "houve_anormalidade") or "nao"
+    tipo_evento_raw = clean_str(payload, "tipo_evento") or "operacao"
 
-    # Tipo do Evento vindo do front (texto ou código)
-    tipo_evento_raw = _s("tipo_evento", "operacao")
-
-    # Houve anormalidade? (texto “sim/nao” vindo do front)
-    houve_anormalidade_raw = _s("houve_anormalidade", "nao")
-
-    # Lista de operadores já montada pela view (modo legado)
+    # Lista de operadores
     operadores_raw = payload.get("operadores") or []
     operadores: List[str] = []
     for op in operadores_raw:
-        op_str = (str(op) or "").strip()
+        op_str = str(op).strip()
         if op_str:
             operadores.append(op_str)
 
-    # 2) Validações de obrigatoriedade (mesmas chaves da view atual)
-    errors: Dict[str, str] = {}
-
-    if not data_operacao:
-        errors["data_operacao"] = "Campo obrigatório."
-    if not nome_evento:
-        errors["nome_evento"] = "Campo obrigatório."
-    if not sala_id_raw:
-        errors["sala_id"] = "Campo obrigatório."
-    if not hora_inicio:
-        errors["hora_inicio"] = "Campo obrigatório."
-    
-    # CORREÇÃO: Removida a obrigatoriedade de hora_fim aqui também
-    # if not hora_fim:
-    #     errors["hora_fim"] = "Campo obrigatório."
+    # 2) Validações
+    errors = _validar_campos_basicos_operacao(payload)
 
     if not operadores:
-        # Mantém a mesma chave usada hoje na view
         errors["operador_1"] = "Informe pelo menos um operador."
 
-    # Normalização + validação de tipo_evento
-    tipo_evento_norm = (tipo_evento_raw or "").strip().lower()
-    if not tipo_evento_norm:
-        tipo_evento = "operacao"
-    elif tipo_evento_norm in ("operacao", "operação comum", "operacao comum", "operacao_comum"):
-        tipo_evento = "operacao"
-    elif tipo_evento_norm in ("cessao", "cessão de sala", "cessao de sala", "cessao_sala"):
-        tipo_evento = "cessao"
-    elif tipo_evento_norm in ("outros", "outros eventos", "outros_eventos"):
-        tipo_evento = "outros"
-    else:
+    tipo_evento = _normalizar_tipo_evento(tipo_evento_raw)
+    if not tipo_evento:
         errors["tipo_evento"] = "Tipo de evento inválido."
 
     if errors:
-        # A view espera extra={"errors": {...}}
         raise ServiceValidationError(
             code="invalid_payload",
             message="Erros de validação no formulário.",
             extra={"errors": errors},
         )
 
-    # 3) Conversões
-    try:
-        sala_id_int = int(sala_id_raw)
-    except (TypeError, ValueError):
-        raise ServiceValidationError(
-            code="invalid_sala_id",
-            message="Local inválido.",
-            extra={"errors": {"sala_id": "Local inválido."}},
-        )
+    sala_id_int = _parse_sala_id(sala_id_raw)
 
-    # Regra da especificação:
-    # - Anormalidade só existe em Operação Comum
-    #   → em Cessão/Outros, forçamos houve_anormalidade=False.
+    # Anormalidade só em Operação Comum
     permite_anormalidade = tipo_evento == "operacao"
-    if permite_anormalidade:
-        houve_anormalidade = (houve_anormalidade_raw or "").strip().lower() == "sim"
-    else:
-        houve_anormalidade = False
+    houve_anormalidade = permite_anormalidade and houve_anormalidade_raw.lower() == "sim"
 
-    # 4) Inserções transacionais (por enquanto, mesmas tabelas de antes)
+    # 3) Inserções transacionais
     with transaction.atomic():
         registro_id = db.insert_registro_operacao_audio(
             data_operacao=data_operacao,
-            nome_evento=nome_evento,
             sala_id=str(sala_id_int),
-            horario_pauta=horario_pauta or None,
-            hora_inicio=hora_inicio,
-            hora_fim=hora_fim or None,
-            tipo_evento=tipo_evento,
-            houve_anormalidade=houve_anormalidade,
-            observacoes=observacoes or None,
-            usb_01=usb_01 or None,
-            usb_02=usb_02 or None,
             criado_por=user_id,
-            atualizado_por=user_id,
         )
 
         ordem = 1
@@ -188,6 +193,17 @@ def registrar_operacao_audio(
                 ordem=ordem,
                 hora_entrada=None,
                 hora_saida=None,
+                nome_evento=None,
+                horario_pauta=None,
+                horario_inicio=None,
+                horario_termino=None,
+                tipo_evento="operacao",
+                seq=1,
+                observacoes=None,
+                usb_01=None,
+                usb_02=None,
+                comissao_id=None,
+                responsavel_evento=None,
                 criado_por=user_id,
                 atualizado_por=user_id,
             )
@@ -198,13 +214,10 @@ def registrar_operacao_audio(
         houve_anormalidade=houve_anormalidade,
     )
 
-def _fetch_sessao_aberta_por_sala(sala_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Wrapper fino sobre db.get_sessao_aberta_por_sala, para manter
-    o acoplamento com a camada db em um único ponto.
-    """
-    return db.get_sessao_aberta_por_sala(sala_id)
 
+# ──────────────────────────────────────────────
+#  Contexto da sessão
+# ──────────────────────────────────────────────
 
 def obter_contexto_sessao(sala_id: int, operador_id: Optional[str]) -> SessaoOperacaoContext:
     sessao = db.get_sessao_aberta_por_sala(sala_id)
@@ -230,13 +243,11 @@ def obter_contexto_sessao(sala_id: int, operador_id: Optional[str]) -> SessaoOpe
     rows = db.listar_entradas_da_sessao(registro_id)
     entradas: List[SessaoOperacaoContextEntrada] = []
 
-    for r in rows:
-        tipo = (r.get("tipo_evento") or "operacao").strip().lower()
-        if tipo not in ("operacao", "cessao", "outros"):
-            tipo = "operacao"
+    def _fmt_time(v):
+        return v.strftime("%H:%M") if v is not None and hasattr(v, "strftime") else (str(v) if v else None)
 
-        def _fmt_time(v):
-            return v.strftime("%H:%M") if v is not None and hasattr(v, "strftime") else (str(v) if v else None)
+    for r in rows:
+        tipo = _normalizar_tipo_evento(r.get("tipo_evento") or "operacao") or "operacao"
 
         entradas.append(
             SessaoOperacaoContextEntrada(
@@ -271,9 +282,7 @@ def obter_contexto_sessao(sala_id: int, operador_id: Optional[str]) -> SessaoOpe
         entradas_operador = []
 
     qtd = len(entradas_operador)
-    if not sessao:
-        situacao = "sem_sessao"
-    elif qtd == 0:
+    if qtd == 0:
         situacao = "sem_entrada"
     elif qtd == 1:
         situacao = "uma_entrada"
@@ -401,6 +410,11 @@ def obter_estado_sessao_para_operador(
         "max_entradas_por_operador": 2,
     }
 
+
+# ──────────────────────────────────────────────
+#  Salvar entrada (criar ou editar via formulário)
+# ──────────────────────────────────────────────
+
 def salvar_entrada_operacao_audio(
     payload: Dict[str, Any],
     user_id: Optional[str],
@@ -420,62 +434,33 @@ def salvar_entrada_operacao_audio(
             extra={"errors": {"geral": "Sessão expirada ou usuário não autenticado."}},
         )
 
-    data_operacao = (payload.get("data_operacao") or "").strip()
-    horario_pauta = (payload.get("horario_pauta") or "").strip() or None
-    hora_inicio = (payload.get("hora_inicio") or "").strip() or None
-    hora_fim = (payload.get("hora_fim") or "").strip() or None
-    sala_id_raw = (payload.get("sala_id") or "").strip()
-    nome_evento = (payload.get("nome_evento") or "").strip() or None
-    observacoes = (payload.get("observacoes") or "").strip() or None
-    usb_01 = (payload.get("usb_01") or "").strip() or None
-    usb_02 = (payload.get("usb_02") or "").strip() or None
-    responsavel_evento = (payload.get("responsavel_evento") or "").strip() or None
-    hora_entrada = (payload.get("hora_entrada") or "").strip() or None
-    hora_saida = (payload.get("hora_saida") or "").strip() or None
-    tipo_evento_raw = (payload.get("tipo_evento") or "operacao").strip().lower()
-    houve_anormalidade_raw = (payload.get("houve_anormalidade") or "nao").strip().lower()
+    data_operacao = clean_str(payload, "data_operacao")
+    horario_pauta = clean_str(payload, "horario_pauta") or None
+    hora_inicio = clean_str(payload, "hora_inicio") or None
+    hora_fim = clean_str(payload, "hora_fim") or None
+    sala_id_raw = clean_str(payload, "sala_id")
+    nome_evento = clean_str(payload, "nome_evento") or None
+    observacoes = clean_str(payload, "observacoes") or None
+    usb_01 = clean_str(payload, "usb_01") or None
+    usb_02 = clean_str(payload, "usb_02") or None
+    responsavel_evento = clean_str(payload, "responsavel_evento") or None
+    hora_entrada = clean_str(payload, "hora_entrada") or None
+    hora_saida = clean_str(payload, "hora_saida") or None
+    tipo_evento_raw = clean_str(payload, "tipo_evento") or "operacao"
+    houve_anormalidade_raw = clean_str(payload, "houve_anormalidade") or "nao"
     entrada_id_raw = payload.get("entrada_id")
-
-    comissao_id_raw = (payload.get("comissao_id") or "").strip()
-    comissao_id: Optional[int]
-    if comissao_id_raw:
-        try:
-            comissao_id = int(comissao_id_raw)
-        except ValueError:
-            comissao_id = None
-    else:
-        comissao_id = None
-
+    comissao_id = _parse_comissao_id(payload)
 
     # Normaliza tipo_evento
-    if tipo_evento_raw not in ("operacao", "cessao", "outros"):
+    tipo_evento = _normalizar_tipo_evento(tipo_evento_raw)
+    if not tipo_evento:
         tipo_evento = "operacao"
-    else:
-        tipo_evento = tipo_evento_raw
 
-    # Flag vindo do formulário (para o fluxo da tela)
-    houve_anormalidade = houve_anormalidade_raw == "sim"
-    if tipo_evento not in ("operacao", "cessao", "outros"):
-        houve_anormalidade = False
-
-    # Este é o flag que será devolvido para o front
-    houve_anormalidade_front = houve_anormalidade
+    # Flag do formulário
+    houve_anormalidade_front = houve_anormalidade_raw.lower() == "sim"
 
     # Validações básicas
-    errors: Dict[str, str] = {}
-    if not data_operacao:
-        errors["data_operacao"] = "Campo obrigatório."
-    if not sala_id_raw:
-        errors["sala_id"] = "Campo obrigatório."
-    if not nome_evento:
-        errors["nome_evento"] = "Campo obrigatório."
-    if not hora_inicio:
-        errors["hora_inicio"] = "Campo obrigatório."
-
-    # CORREÇÃO: hora_fim não é mais obrigatório
-    # if not hora_fim:
-    #     errors["hora_fim"] = "Campo obrigatório."
-
+    errors = _validar_campos_basicos_operacao(payload)
     if errors:
         raise ServiceValidationError(
             code="validation_error",
@@ -483,15 +468,7 @@ def salvar_entrada_operacao_audio(
             extra={"errors": errors},
         )
 
-    try:
-        sala_id_int = int(sala_id_raw)
-    except (TypeError, ValueError):
-        raise ServiceValidationError(
-            code="validation_error",
-            message="Local inválido.",
-            extra={"errors": {"sala_id": "Local inválido."}},
-        )
-
+    sala_id_int = _parse_sala_id(sala_id_raw)
     operador_id = str(user_id)
     ctx = obter_contexto_sessao(sala_id_int, operador_id)
 
@@ -522,9 +499,6 @@ def salvar_entrada_operacao_audio(
             )
 
         with transaction.atomic():
-            # Atualiza somente os dados da entrada do operador.
-            # Regra nova: NÃO mexemos no campo houve_anormalidade aqui;
-            # ele passa a ser sincronizado pela RAOA (trigger no banco).
             db.update_registro_operacao_operador(
                 entrada_id=entrada_atual.id,
                 nome_evento=nome_evento,
@@ -532,7 +506,6 @@ def salvar_entrada_operacao_audio(
                 horario_inicio=hora_inicio,
                 horario_termino=hora_fim,
                 tipo_evento=tipo_evento,
-                houve_anormalidade=None,
                 observacoes=observacoes,
                 usb_01=usb_01,
                 usb_02=usb_02,
@@ -543,7 +516,6 @@ def salvar_entrada_operacao_audio(
                 atualizado_por=user_id,
             )
 
-            # NOVA REGRA: Se informou hora_fim na edição, fecha a sessão
             if hora_fim:
                 db.finalizar_sessao_operacao_audio(
                     registro_id=ctx.registro_id,
@@ -553,13 +525,11 @@ def salvar_entrada_operacao_audio(
         return {
             "registro_id": ctx.registro_id,
             "entrada_id": entrada_atual.id,
-            # devolve o que veio do formulário/RAOA, não o que está no banco
             "houve_anormalidade": houve_anormalidade_front,
             "tipo_evento": tipo_evento,
             "seq": entrada_atual.seq,
             "is_edicao": True,
         }
-
 
     # --- CRIAÇÃO ------------------------------------------------------------
     qtd_entradas = len(ctx.entradas_operador)
@@ -572,27 +542,12 @@ def salvar_entrada_operacao_audio(
 
     seq = 1 if qtd_entradas == 0 else 2
 
-    # Na criação, o cabeçalho e a entrada nascem SEM anormalidade marcada.
-    # Se o usuário marcar "Sim", isso só significa que vamos abrir a tela de RAOA;
-    # o flag verdadeiro da anormalidade será ligado quando a RAOA for salva.
-    houve_anormalidade_db = False
-
     with transaction.atomic():
         if not ctx.existe_sessao or ctx.registro_id is None:
             registro_id = db.insert_registro_operacao_audio(
                 data_operacao=data_operacao,
-                nome_evento=nome_evento,
                 sala_id=str(sala_id_int),
-                horario_pauta=horario_pauta,
-                hora_inicio=hora_inicio,
-                hora_fim=hora_fim,
-                tipo_evento=tipo_evento,
-                houve_anormalidade=houve_anormalidade_db,
-                observacoes=observacoes,
-                usb_01=usb_01,
-                usb_02=usb_02,
                 criado_por=user_id,
-                atualizado_por=user_id,
             )
         else:
             registro_id = ctx.registro_id
@@ -611,7 +566,6 @@ def salvar_entrada_operacao_audio(
             horario_termino=hora_fim,
             tipo_evento=tipo_evento,
             seq=seq,
-            houve_anormalidade=houve_anormalidade_db,
             observacoes=observacoes,
             usb_01=usb_01,
             usb_02=usb_02,
@@ -621,29 +575,25 @@ def salvar_entrada_operacao_audio(
             atualizado_por=user_id,
         )
 
-        # NOVA REGRA: Se informou hora_fim na criação, fecha a sessão
         if hora_fim:
             db.finalizar_sessao_operacao_audio(
                 registro_id=registro_id,
                 fechado_por=user_id
             )
-            
+
     return {
         "registro_id": registro_id,
         "entrada_id": entrada_id,
-        # devolve o que veio do formulário, para o front decidir abrir RAOA
         "houve_anormalidade": houve_anormalidade_front,
         "tipo_evento": tipo_evento,
         "seq": seq,
         "is_edicao": False,
     }
 
-@dataclass
-class EntradaOperacaoEditResult:
-    entrada_id: int
-    registro_id: int
-    houve_anormalidade_nova: bool  # True se mudou de false→true
 
+# ──────────────────────────────────────────────
+#  Edição de entrada (tela de detalhe)
+# ──────────────────────────────────────────────
 
 def editar_entrada_operacao(
     entrada_id: int,
@@ -665,9 +615,9 @@ def editar_entrada_operacao(
     body = payload or {}
 
     # 1) Campos obrigatórios
-    nome_evento = (body.get("nome_evento") or "").strip()
-    hora_inicio = (body.get("hora_inicio") or "").strip() or None
-    responsavel_evento = (body.get("responsavel_evento") or "").strip()
+    nome_evento = clean_str(body, "nome_evento")
+    hora_inicio = clean_str(body, "hora_inicio") or None
+    responsavel_evento = clean_str(body, "responsavel_evento")
 
     errors: Dict[str, str] = {}
     if not nome_evento:
@@ -685,24 +635,17 @@ def editar_entrada_operacao(
         )
 
     # 2) Campos opcionais
-    horario_pauta = (body.get("horario_pauta") or "").strip() or None
-    horario_termino = (body.get("hora_fim") or "").strip() or None
-    usb_01 = (body.get("usb_01") or "").strip() or None
-    usb_02 = (body.get("usb_02") or "").strip() or None
-    observacoes = (body.get("observacoes") or "").strip() or None
-    hora_entrada = (body.get("hora_entrada") or "").strip() or None
-    hora_saida = (body.get("hora_saida") or "").strip() or None
-    tipo_evento = (body.get("tipo_evento") or "operacao").strip().lower()
-    if tipo_evento not in ("operacao", "cessao", "outros"):
-        tipo_evento = "operacao"
+    horario_pauta = clean_str(body, "horario_pauta") or None
+    horario_termino = clean_str(body, "hora_fim") or None
+    usb_01 = clean_str(body, "usb_01") or None
+    usb_02 = clean_str(body, "usb_02") or None
+    observacoes = clean_str(body, "observacoes") or None
+    hora_entrada = clean_str(body, "hora_entrada") or None
+    hora_saida = clean_str(body, "hora_saida") or None
 
-    comissao_id_raw = (body.get("comissao_id") or "").strip() if isinstance(body.get("comissao_id"), str) else body.get("comissao_id")
-    comissao_id: Optional[int] = None
-    if comissao_id_raw:
-        try:
-            comissao_id = int(comissao_id_raw)
-        except (TypeError, ValueError):
-            comissao_id = None
+    tipo_evento = _normalizar_tipo_evento(clean_str(body, "tipo_evento") or "operacao") or "operacao"
+
+    comissao_id = _parse_comissao_id(body)
 
     # 2b) sala_id (opcional, só quando total_entradas = 1)
     sala_id_raw = body.get("sala_id")
@@ -714,80 +657,61 @@ def editar_entrada_operacao(
             novo_sala_id = None
 
     # 2c) Verifica total de entradas na sessão para permitir edição de sala/hora_fim
-    from api.db.operacao import count_entradas_por_sessao
-    total_entradas = count_entradas_por_sessao(entrada_id)
+    total_entradas = db.count_entradas_por_sessao(entrada_id)
 
     # Se há mais de 1 operador, ignora alterações em sala_id e horario_termino
     if total_entradas > 1:
         novo_sala_id = None
         horario_termino = None  # será preenchido com o valor original abaixo
 
-    # 3) Verifica se houve_anormalidade mudou de false→true
-    houve_anormalidade_raw = (body.get("houve_anormalidade") or "nao").strip().lower()
-    houve_anormalidade_nova_val = houve_anormalidade_raw == "sim"
-
-    # Busca o valor atual de houve_anormalidade no banco
-    from api.db.operacao import get_entrada_operacao_snapshot
-    snap_before_check = get_entrada_operacao_snapshot(entrada_id)
-    houve_anormalidade_atual = bool(snap_before_check.get("houve_anormalidade", False))
-
-    # Flag: houve mudança de false→true (precisa criar anormalidade)
-    houve_anormalidade_nova = (not houve_anormalidade_atual) and houve_anormalidade_nova_val
-
-    # Busca registro_id para retorno
-    from django.db import connection
-    with connection.cursor() as cur:
-        cur.execute(
-            "SELECT registro_id FROM operacao.registro_operacao_operador WHERE id = %s::bigint",
-            [entrada_id],
-        )
-        row = cur.fetchone()
-        registro_id = int(row[0]) if row else 0
+    # 3) Busca registro_id para retorno
+    registro_id = db.get_registro_id_by_entrada(entrada_id) or 0
 
     # 4) Operações de banco em transação única
-    # Se total_entradas > 1, mantém horario_termino original (não permite edição)
-    if total_entradas > 1:
-        horario_termino = snap_before_check.get("horario_termino")
-        # Converte de isoformat string de volta se necessário
-        if isinstance(horario_termino, str) and horario_termino:
-            pass  # já é string, o banco aceita
-        elif horario_termino is None:
-            pass
-
-    campos = {
-        "nome_evento": nome_evento,
-        "responsavel_evento": responsavel_evento,
-        "horario_pauta": horario_pauta,
-        "horario_inicio": hora_inicio,
-        "horario_termino": horario_termino,
-        "usb_01": usb_01,
-        "usb_02": usb_02,
-        "observacoes": observacoes,
-        "comissao_id": comissao_id,
-        "tipo_evento": tipo_evento,
-        "hora_entrada": hora_entrada,
-        "hora_saida": hora_saida,
-    }
-
     with transaction.atomic():
-        # 4.1) Captura snapshot antes da edição
+        # 4.1) Captura snapshot (usado para histórico E para checar houve_anormalidade)
         snapshot = db.get_entrada_operacao_snapshot(entrada_id)
 
-        # 4.2) Grava snapshot no histórico
+        # Se total_entradas > 1, mantém horario_termino original (não permite edição)
+        if total_entradas > 1:
+            horario_termino = snapshot.get("horario_termino")
+
+        # 4.2) Verifica se houve_anormalidade mudou de false→true
+        houve_anormalidade_raw = clean_str(body, "houve_anormalidade") or "nao"
+        houve_anormalidade_nova_val = houve_anormalidade_raw.lower() == "sim"
+        houve_anormalidade_atual = bool(snapshot.get("houve_anormalidade", False))
+        houve_anormalidade_nova = (not houve_anormalidade_atual) and houve_anormalidade_nova_val
+
+        # 4.3) Grava snapshot no histórico
         db.insert_entrada_operacao_historico(
             entrada_id=entrada_id,
             snapshot=snapshot,
             editado_por=user_id,
         )
 
-        # 4.3) Atualiza campos editáveis na entrada do operador
+        # 4.4) Atualiza campos editáveis na entrada do operador
+        campos = {
+            "nome_evento": nome_evento,
+            "responsavel_evento": responsavel_evento,
+            "horario_pauta": horario_pauta,
+            "horario_inicio": hora_inicio,
+            "horario_termino": horario_termino,
+            "usb_01": usb_01,
+            "usb_02": usb_02,
+            "observacoes": observacoes,
+            "comissao_id": comissao_id,
+            "tipo_evento": tipo_evento,
+            "hora_entrada": hora_entrada,
+            "hora_saida": hora_saida,
+        }
+
         db.update_entrada_operacao_detalhe(
             entrada_id=entrada_id,
             campos=campos,
             atualizado_por=user_id,
         )
 
-        # 4.4) Atualiza sala_id no registro de áudio (só se permitido e informado)
+        # 4.5) Atualiza sala_id no registro de áudio (só se permitido e informado)
         if novo_sala_id is not None:
             db.update_sala_registro_operacao_audio(
                 entrada_id=entrada_id,
@@ -800,6 +724,10 @@ def editar_entrada_operacao(
         houve_anormalidade_nova=houve_anormalidade_nova,
     )
 
+
+# ──────────────────────────────────────────────
+#  Finalizar sessão
+# ──────────────────────────────────────────────
 
 def finalizar_sessao_operacao_audio(
     sala_id: int,
@@ -819,8 +747,7 @@ def finalizar_sessao_operacao_audio(
             extra={"errors": {"geral": "Sessão expirada ou usuário não autenticado."}},
         )
 
-    # Busca a sessão aberta diretamente pelo helper
-    sessao = _fetch_sessao_aberta_por_sala(sala_id)
+    sessao = db.get_sessao_aberta_por_sala(sala_id)
     if not sessao:
         raise ServiceValidationError(
             code="no_open_session",

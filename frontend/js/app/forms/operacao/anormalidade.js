@@ -4,40 +4,6 @@ const REGISTRO_ANORMALIDADE_URL = AppConfig.apiUrl(AppConfig.endpoints.forms.ano
 const REGISTRO_LOOKUP_URL = AppConfig.apiUrl(AppConfig.endpoints.lookups.registroOperacao);
 
 /**
- * Lê o token JWT do front (Auth ou localStorage)
- */
-function getToken() {
-    try {
-        if (window.Auth && typeof Auth.loadToken === "function") {
-            const t = Auth.loadToken();
-            if (t) return t;
-        }
-    } catch (e) {
-        console.error("Erro ao carregar token via Auth:", e);
-    }
-
-    return (
-        localStorage.getItem("auth_token") ||
-        localStorage.getItem("token") ||
-        ""
-    );
-}
-
-/**
- * fetch com Authorization
- */
-async function authFetch(url, options = {}) {
-    if (window.Auth && typeof Auth.authFetch === "function") {
-        return Auth.authFetch(url, options);
-    }
-
-    const headers = Object.assign({}, options.headers || {});
-    const tok = getToken();
-    if (tok) headers["Authorization"] = "Bearer " + tok;
-    return fetch(url, Object.assign({}, options, { headers }));
-}
-
-/**
  * Lê IDs da querystring
  */
 function getQueryId(paramName) {
@@ -65,7 +31,7 @@ async function loadSalas(prefId = null) {
     sel.innerHTML = '<option value="">Carregando...</option>';
 
     try {
-        const r = await authFetch(SALAS_URL, { method: "GET" });
+        const r = await Auth.authFetch(SALAS_URL, { method: "GET" });
         const json = await r.json().catch(() => ({}));
 
         const rows = Array.isArray(json?.data) ? json.data : [];
@@ -97,7 +63,7 @@ async function loadRegistroOperacao(registroId, entradaId) {
         if (entradaId) params.set("entrada_id", String(entradaId));
 
         const url = `${REGISTRO_LOOKUP_URL}?${params.toString()}`;
-        const resp = await authFetch(url, { method: "GET" });
+        const resp = await Auth.authFetch(url, { method: "GET" });
         const json = await resp.json().catch(() => ({}));
 
         if (!resp.ok || json.ok === false || !json.data) {
@@ -117,7 +83,7 @@ async function loadAnormalidadeExistente(entradaId) {
     if (!entradaId) return null;
     try {
         const url = `${REGISTRO_ANORMALIDADE_URL}?entrada_id=${encodeURIComponent(entradaId)}`;
-        const resp = await authFetch(url, { method: "GET" });
+        const resp = await Auth.authFetch(url, { method: "GET" });
 
         if (resp.status === 404) return null;
 
@@ -305,7 +271,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         btn.textContent = "Salvando...";
 
         try {
-            const resp = await authFetch(REGISTRO_ANORMALIDADE_URL, {
+            const resp = await Auth.authFetch(REGISTRO_ANORMALIDADE_URL, {
                 method: "POST",
                 body: new FormData(form),
             });

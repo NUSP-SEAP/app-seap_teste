@@ -1,6 +1,11 @@
+import logging
 from typing import List, Dict, Any, Tuple, Optional
 
 from django.db import connection, transaction
+
+from .utils import fetchall_dicts
+
+logger = logging.getLogger(__name__)
 
 
 # Configuração das entidades suportadas na tela de edição de formulários.
@@ -70,27 +75,15 @@ def list_form_edit_items(entidade: str) -> List[Dict[str, Any]]:
 
     with connection.cursor() as cur:
         cur.execute(sql)
-        rows = cur.fetchall()
+        rows = fetchall_dicts(cur)
 
-    result: List[Dict[str, Any]] = []
     for row in rows:
-        id_val, nome, ordem, ativo = row
+        row["id"] = int(row["id"])
+        row["ativo"] = bool(row["ativo"])
+        if not row["ativo"]:
+            row["ordem"] = None
 
-        ativo_bool = bool(ativo)
-        ordem_payload: Optional[int]
-        if ativo_bool:
-            ordem_payload = ordem
-        else:
-            ordem_payload = None
-
-        result.append({
-            "id": int(id_val),
-            "nome": nome,
-            "ordem": ordem_payload,
-            "ativo": ativo_bool,
-        })
-
-    return result
+    return rows
 
 
 def save_form_edit_items(
@@ -170,68 +163,35 @@ def save_form_edit_items(
 
                 if registro_id is None:
                     # INSERT
+                    audit_cols = ", criado_por, atualizado_por" if has_audit_user else ""
+                    audit_vals = ", %s::uuid, %s::uuid" if has_audit_user else ""
+                    sql = f"""
+                        INSERT INTO {table} (nome, ativo, ordem{audit_cols})
+                        VALUES (%s::text, %s::boolean, %s::smallint{audit_vals})
+                        RETURNING id;
+                    """
+                    params = [nome, ativo, ordem]
                     if has_audit_user:
-                        sql = f"""
-                            INSERT INTO {table} (
-                                nome,
-                                ativo,
-                                ordem,
-                                criado_por,
-                                atualizado_por
-                            )
-                            VALUES (
-                                %s::text,
-                                %s::boolean,
-                                %s::smallint,
-                                %s::uuid,
-                                %s::uuid
-                            )
-                            RETURNING id;
-                        """
-                        params = [nome, ativo, ordem, user_id, user_id]
-                    else:
-                        sql = f"""
-                            INSERT INTO {table} (
-                                nome,
-                                ativo,
-                                ordem
-                            )
-                            VALUES (
-                                %s::text,
-                                %s::boolean,
-                                %s::smallint
-                            )
-                            RETURNING id;
-                        """
-                        params = [nome, ativo, ordem]
+                        params += [user_id, user_id]
 
                     cur.execute(sql, params)
-                    new_id = cur.fetchone()[0]
-                    item["id"] = new_id
+                    item["id"] = cur.fetchone()[0]
                     created += 1
                 else:
                     # UPDATE
+                    audit_set = ", atualizado_por = %s::uuid" if has_audit_user else ""
+                    sql = f"""
+                        UPDATE {table}
+                           SET nome = %s::text,
+                               ativo = %s::boolean,
+                               ordem = %s::smallint{audit_set},
+                               atualizado_em = NOW()
+                         WHERE id = %s;
+                    """
+                    params = [nome, ativo, ordem]
                     if has_audit_user:
-                        sql = f"""
-                            UPDATE {table}
-                               SET nome = %s::text,
-                                   ativo = %s::boolean,
-                                   ordem = %s::smallint,
-                                   atualizado_por = %s::uuid,
-                                   atualizado_em = NOW()
-                             WHERE id = %s;
-                        """
-                        params = [nome, ativo, ordem, user_id, registro_id]
-                    else:
-                        sql = f"""
-                            UPDATE {table}
-                               SET nome = %s::text,
-                                   ativo = %s::boolean,
-                                   ordem = %s::smallint,
-                                   atualizado_em = NOW()
-                             WHERE id = %s;
-                        """
-                        params = [nome, ativo, ordem, registro_id]
+                        params.append(user_id)
+                    params.append(registro_id)
 
                     cur.execute(sql, params)
                     if cur.rowcount == 0:
@@ -281,19 +241,16 @@ def list_sala_config_items(sala_id: int) -> List[Dict[str, Any]]:
 
     with connection.cursor() as cur:
         cur.execute(sql, [sala_id])
-        rows = cur.fetchall()
+        rows = fetchall_dicts(cur)
 
-    return [
-        {
-            "id": int(row[0]),
-            "item_tipo_id": int(row[1]),
-            "nome": row[2],
-            "tipo_widget": row[3] or "radio",
-            "ordem": int(row[4]) if row[4] is not None else None,
-            "ativo": bool(row[5]),
-        }
-        for row in rows
-    ]
+    for row in rows:
+        row["id"] = int(row["id"])
+        row["item_tipo_id"] = int(row["item_tipo_id"])
+        row["tipo_widget"] = row["tipo_widget"] or "radio"
+        row["ordem"] = int(row["ordem"]) if row["ordem"] is not None else None
+        row["ativo"] = bool(row["ativo"])
+
+    return rows
 
 
 def find_or_create_item_tipo(nome: str, tipo_widget: str) -> int:
@@ -311,22 +268,13 @@ def find_or_create_item_tipo(nome: str, tipo_widget: str) -> int:
         raise ValueError("tipo_widget deve ser 'radio' ou 'text'")
 
     with connection.cursor() as cur:
-        sql_find = """
-            SELECT id FROM forms.checklist_item_tipo
-            WHERE nome = %s::text AND tipo_widget = %s::text;
-        """
-        cur.execute(sql_find, [nome, tipo_widget])
-        row = cur.fetchone()
-
-        if row:
-            return int(row[0])
-
-        sql_insert = """
+        sql_upsert = """
             INSERT INTO forms.checklist_item_tipo (nome, tipo_widget)
             VALUES (%s::text, %s::text)
+            ON CONFLICT (nome, tipo_widget) DO UPDATE SET nome = EXCLUDED.nome
             RETURNING id;
         """
-        cur.execute(sql_insert, [nome, tipo_widget])
+        cur.execute(sql_upsert, [nome, tipo_widget])
         return int(cur.fetchone()[0])
 
 
@@ -469,9 +417,8 @@ def apply_sala_config_to_all(
         try:
             save_sala_config_items(sala_id, items)
             count += 1
-        except Exception as e:
-            # Log do erro, mas continua processando as demais salas
-            print(f"Erro ao aplicar config na sala {sala_id}: {e}")
+        except Exception:
+            logger.exception("Erro ao aplicar config na sala %s", sala_id)
 
     return count
 

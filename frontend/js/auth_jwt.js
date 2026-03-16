@@ -132,8 +132,7 @@ async function doLogin(usuario, senha) {
   saveUser(cachedMe);
   window.__currentUser = cachedMe;
 
-  // Redireciona imediatamente
-  window.location.href = isAdmin ? '/admin/index.html' : '/home.html';
+  return { ok: true, isAdmin };
 }
 
 // ==== Logout ====

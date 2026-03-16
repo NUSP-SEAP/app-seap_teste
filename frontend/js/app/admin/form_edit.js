@@ -220,7 +220,7 @@
         }
 
         const json = await fetchJson(url);
-        if (!json || !json.success) {
+        if (!json || !json.ok) {
             console.error("Falha ao carregar dados de", entityKey, json);
             if (tbl) {
                 const tbody = tbl.querySelector("tbody");
@@ -260,12 +260,6 @@
     // ============================
 
     function renderEntityTable(entityKey) {
-        // Para sala_config, usa renderização específica
-        if (entityKey === "sala_config") {
-            renderSalaConfigTable();
-            return;
-        }
-
         const cfg = ENTITY_CONFIG[entityKey];
         if (!cfg) return;
 
@@ -277,6 +271,7 @@
         if (!tbody) return;
 
         const items = ent.items || [];
+        const isSC = (entityKey === "sala_config");
 
         // Reorganiza: ativos no topo, inativos depois
         const activeItems = [];
@@ -298,23 +293,28 @@
 
         function buildActiveRow(item, index) {
             const pos = index + 1;
-            const itemIndex = index;
             const checkedAttr = item.ativo ? "checked" : "";
-
             const rowClasses = ["form-edit-row"];
-            if (item._highlight) {
-                rowClasses.push("form-edit-row-moved");
-            }
+            if (item._highlight) rowClasses.push("form-edit-row-moved");
+
+            const tipoCell = isSC ? `
+                <td class="tipo-cell">
+                    <select class="form-edit-select-tipo" data-item-index="${index}">
+                        <option value="radio" ${(item.tipo_widget || "radio") === "radio" ? "selected" : ""}>Ok/Falha</option>
+                        <option value="text" ${(item.tipo_widget || "radio") === "text" ? "selected" : ""}>Texto livre</option>
+                    </select>
+                </td>` : "";
 
             return `
             <tr class="${rowClasses.join(" ")}"
                 data-type="item"
-                data-item-index="${itemIndex}"
+                data-item-index="${index}"
                 data-active-index="${index}"
                 draggable="true">
                 <td class="drag-cell"><span title="Arrastar para reordenar">⋮⋮</span></td>
                 <td class="position-cell">${pos}</td>
                 <td class="name-cell">${escapeHtml(item.nome)}</td>
+                ${tipoCell}
                 <td class="ativo-cell">
                     <div class="form-edit-checkbox">
                         <input type="checkbox" class="form-edit-checkbox-ativo" ${checkedAttr}>
@@ -325,14 +325,17 @@
         }
 
         function buildInactiveRow(item, index) {
-            const itemIndex = index;
             const checkedAttr = item.ativo ? "checked" : "";
+            const tipoCell = isSC
+                ? `<td class="tipo-cell" style="color: #64748b; font-size: 0.9em;">${item.tipo_widget === "text" ? "Texto livre" : "Ok/Falha"}</td>`
+                : "";
 
             return `
-                <tr class="form-edit-row form-edit-row-inactive" data-type="inactive" data-item-index="${itemIndex}">
+                <tr class="form-edit-row form-edit-row-inactive" data-type="inactive" data-item-index="${index}">
                     <td class="drag-cell"><span title="Item desativado">⋮⋮</span></td>
                     <td class="position-cell"></td>
                     <td class="name-cell">${escapeHtml(item.nome)}</td>
+                    ${tipoCell}
                     <td class="ativo-cell">
                         <div class="form-edit-checkbox">
                             <input type="checkbox" class="form-edit-checkbox-ativo" ${checkedAttr}>
@@ -343,20 +346,27 @@
         }
 
         function buildBlankRow() {
-            const inputId = `form-edit-new-name-${entityKey}`;
+            const tipoCell = isSC ? `
+                    <td class="tipo-cell">
+                        <select id="form-edit-new-tipo-sala_config" class="form-edit-select-tipo">
+                            <option value="radio">Ok/Falha</option>
+                            <option value="text">Texto livre</option>
+                        </select>
+                    </td>` : "";
+            const ativoCell = isSC
+                ? `<td class="ativo-cell"></td>`
+                : `<td class="ativo-cell"><div class="form-edit-checkbox"><input type="checkbox" disabled></div></td>`;
+            const placeholder = isSC ? "Digite o nome do novo item..." : "Novo registro...";
 
             return `
                 <tr class="form-edit-row form-edit-row-blank" data-type="blank" data-active-index="${insertIndex}" draggable="true">
                     <td class="drag-cell"><span title="Arrastar para escolher a posição do novo item">⋮⋮</span></td>
                     <td class="position-cell"></td>
                     <td class="name-cell">
-                        <input type="text" id="${inputId}" class="form-edit-input-name" placeholder="Novo registro...">
+                        <input type="text" id="form-edit-new-name-${entityKey}" class="form-edit-input-name" placeholder="${placeholder}">
                     </td>
-                    <td class="ativo-cell">
-                        <div class="form-edit-checkbox">
-                            <input type="checkbox" disabled>
-                        </div>
-                    </td>
+                    ${tipoCell}
+                    ${ativoCell}
                 </tr>
             `;
         }
@@ -364,25 +374,19 @@
         let html = "";
 
         for (let i = 0; i < activeCount; i++) {
-            if (i === insertIndex) {
-                html += buildBlankRow();
-            }
+            if (i === insertIndex) html += buildBlankRow();
             html += buildActiveRow(canonical[i], i);
         }
-        if (insertIndex === activeCount) {
-            html += buildBlankRow();
-        }
+        if (insertIndex === activeCount) html += buildBlankRow();
 
         for (let i = activeCount; i < canonical.length; i++) {
             html += buildInactiveRow(canonical[i], i);
         }
 
         if (!html) {
-            html = `
-                <tr>
-                    <td colspan="4" class="empty-state">Nenhum registro cadastrado.</td>
-                </tr>
-            `;
+            const colspan = isSC ? 5 : 4;
+            const msg = isSC ? "Nenhum item configurado." : "Nenhum registro cadastrado.";
+            html = `<tr><td colspan="${colspan}" class="empty-state">${msg}</td></tr>`;
         }
 
         tbody.innerHTML = html;
@@ -390,6 +394,12 @@
         attachRowEvents(entityKey);
         setupBlankRowInput(entityKey);
         updateActionsState();
+
+        if (isSC) {
+            tbl.classList.remove("hidden");
+            const infoEl = document.getElementById("sala-config-info");
+            if (infoEl) infoEl.classList.remove("hidden");
+        }
     }
 
     function escapeHtml(str) {
@@ -428,7 +438,7 @@
         const nameCells = tbody.querySelectorAll("tr[data-type='item'] td.name-cell");
         nameCells.forEach(function (td) {
             td.addEventListener("dblclick", function () {
-                startEditName(entityKey, td);
+                startEdit(entityKey, td);
             });
         });
 
@@ -446,6 +456,17 @@
             });
         });
 
+        // Dropdown Tipo (apenas sala_config)
+        if (entityKey === "sala_config") {
+            const selectsTipo = tbody.querySelectorAll("select.form-edit-select-tipo");
+            selectsTipo.forEach(function (select) {
+                select.addEventListener("change", function () {
+                    const idx = parseInt(select.getAttribute("data-item-index"), 10);
+                    if (isNaN(idx)) return;
+                    handleSalaConfigTipoChange(idx, select.value);
+                });
+            });
+        }
     }
 
     function setupBlankRowInput(entityKey) {
@@ -465,11 +486,15 @@
         input.addEventListener("blur", function () {
             const value = input.value.trim();
             if (!value) return;
-            createNewItemFromBlankRow(entityKey, value);
+            if (entityKey === "sala_config") {
+                createNewSalaConfigItemFromName(value);
+            } else {
+                createNewItemFromBlankRow(entityKey, value);
+            }
         });
     }
 
-    function startEditName(entityKey, cell) {
+    function startEdit(entityKey, cell) {
         const row = cell.closest("tr");
         if (!row) return;
         const idx = parseInt(row.getAttribute("data-item-index"), 10);
@@ -496,10 +521,7 @@
             const newVal = input.value.trim();
             if (newVal && newVal !== item.nome) {
                 item.nome = newVal;
-
-                // Marca linha como modificada
                 item._highlight = true;
-
                 markDirty(entityKey);
             }
             renderEntityTable(entityKey);
@@ -671,13 +693,6 @@
         const moved = movedArr[0];
         items.splice(toActiveIndex, 0, moved);
 
-        // Limpa destaque anterior
-        // items.forEach(function (it) {
-        //     if (it && typeof it === "object") {
-        //         delete it._highlight;
-        //     }
-        // });
-
         // Marca o item movido para destaque visual
         moved._highlight = true;
 
@@ -728,7 +743,7 @@
             body: JSON.stringify(payload)
         });
 
-        if (!json || !json.success) {
+        if (!json || !json.ok) {
             alert("Erro ao salvar alterações. Verifique o console para detalhes.");
             console.error("Erro ao salvar", entKey, json);
             return;
@@ -755,11 +770,7 @@
         ent.insertIndex = null;
         ent.dirty = false;
 
-        if (entKey === "sala_config") {
-            renderSalaConfigTable();
-        } else {
-            renderEntityTable(entKey);
-        }
+        renderEntityTable(entKey);
 
         updateActionsState();
     }
@@ -779,7 +790,7 @@
         const url = AppConfig.apiUrl ? AppConfig.apiUrl(endpoint) : endpoint;
 
         const json = await fetchJson(url);
-        if (!json || !json.success) {
+        if (!json || !json.ok) {
             console.error("Falha ao carregar salas", json);
             return;
         }
@@ -842,7 +853,7 @@
         }
 
         const json = await fetchJson(url);
-        if (!json || !json.success) {
+        if (!json || !json.ok) {
             console.error("Falha ao carregar config da sala", json);
             if (tbl) {
                 const tbody = tbl.querySelector("tbody");
@@ -865,7 +876,7 @@
         ent.dirty = false;
         ent.insertIndex = null;
 
-        renderSalaConfigTable();
+        renderEntityTable("sala_config");
     }
 
     function cloneSalaConfigItems(items) {
@@ -880,264 +891,11 @@
         });
     }
 
-    function renderSalaConfigTable() {
-        const ent = state.entities.sala_config;
-        const tbl = document.getElementById("tb-sala-config-itens");
-        if (!tbl) return;
-
-        const tbody = tbl.querySelector("tbody");
-        if (!tbody) return;
-
-        const items = ent.items || [];
-
-        // Reorganiza: ativos no topo, inativos depois
-        const activeItems = [];
-        const inactiveItems = [];
-        items.forEach(function (it) {
-            if (it.ativo) activeItems.push(it);
-            else inactiveItems.push(it);
-        });
-
-        const canonical = activeItems.concat(inactiveItems);
-        ent.items = canonical;
-
-        const activeCount = activeItems.length;
-        let insertIndex = ent.insertIndex;
-        if (typeof insertIndex !== "number" || insertIndex < 0 || insertIndex > activeCount) {
-            insertIndex = activeCount;
-        }
-        ent.insertIndex = insertIndex;
-
-        function buildActiveRow(item, index) {
-            const pos = index + 1;
-            const itemIndex = index;
-            const checkedAtivo = item.ativo ? "checked" : "";
-
-            const rowClasses = ["form-edit-row"];
-            if (item._highlight) {
-                rowClasses.push("form-edit-row-moved");
-            }
-
-            const tipoWidget = item.tipo_widget || "radio";
-
-            return `
-            <tr class="${rowClasses.join(" ")}"
-                data-type="item"
-                data-item-index="${itemIndex}"
-                data-active-index="${index}"
-                draggable="true">
-                <td class="drag-cell"><span title="Arrastar para reordenar">⋮⋮</span></td>
-                <td class="position-cell">${pos}</td>
-                <td class="name-cell">${escapeHtml(item.nome)}</td>
-                <td class="tipo-cell">
-                    <select class="form-edit-select-tipo" data-item-index="${itemIndex}">
-                        <option value="radio" ${tipoWidget === "radio" ? "selected" : ""}>Ok/Falha</option>
-                        <option value="text" ${tipoWidget === "text" ? "selected" : ""}>Texto livre</option>
-                    </select>
-                </td>
-                <td class="ativo-cell">
-                    <div class="form-edit-checkbox">
-                        <input type="checkbox" class="form-edit-checkbox-ativo" ${checkedAtivo}>
-                    </div>
-                </td>
-            </tr>
-        `;
-        }
-
-        function buildInactiveRow(item, index) {
-            const itemIndex = index;
-            const checkedAtivo = item.ativo ? "checked" : "";
-            const tipoLabel = item.tipo_widget === "text" ? "Texto livre" : "Ok/Falha";
-
-            return `
-                <tr class="form-edit-row form-edit-row-inactive" data-type="inactive" data-item-index="${itemIndex}">
-                    <td class="drag-cell"><span title="Item desativado">⋮⋮</span></td>
-                    <td class="position-cell"></td>
-                    <td class="name-cell">${escapeHtml(item.nome)}</td>
-                    <td class="tipo-cell" style="color: #64748b; font-size: 0.9em;">${tipoLabel}</td>
-                    <td class="ativo-cell">
-                        <div class="form-edit-checkbox">
-                            <input type="checkbox" class="form-edit-checkbox-ativo" ${checkedAtivo}>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function buildBlankRow() {
-            return `
-                <tr class="form-edit-row form-edit-row-blank" data-type="blank" data-active-index="${insertIndex}" draggable="true">
-                    <td class="drag-cell"><span title="Arrastar para escolher a posição">⋮⋮</span></td>
-                    <td class="position-cell"></td>
-                    <td class="name-cell">
-                        <input type="text" id="sala-config-new-item-input" class="form-edit-input-name" placeholder="Digite o nome do novo item...">
-                    </td>
-                    <td class="tipo-cell">
-                        <select id="sala-config-new-tipo-input" class="form-edit-select-tipo">
-                            <option value="radio">Ok/Falha</option>
-                            <option value="text">Texto livre</option>
-                        </select>
-                    </td>
-                    <td class="ativo-cell"></td>
-                </tr>
-            `;
-        }
-
-        let html = "";
-
-        for (let i = 0; i < activeCount; i++) {
-            if (i === insertIndex) {
-                html += buildBlankRow();
-            }
-            html += buildActiveRow(canonical[i], i);
-        }
-        if (insertIndex === activeCount) {
-            html += buildBlankRow();
-        }
-
-        for (let i = activeCount; i < canonical.length; i++) {
-            html += buildInactiveRow(canonical[i], i);
-        }
-
-        if (!html) {
-            html = `
-                <tr>
-                    <td colspan="5" class="empty-state">Nenhum item configurado.</td>
-                </tr>
-            `;
-        }
-
-        tbody.innerHTML = html;
-
-        attachSalaConfigRowEvents();
-        setupSalaConfigBlankRow();
-        updateActionsState();
-
-        // Mostra a tabela e a info
-        tbl.classList.remove("hidden");
-        const infoEl = document.getElementById("sala-config-info");
-        if (infoEl) infoEl.classList.remove("hidden");
-    }
-
-    function attachSalaConfigRowEvents() {
-        const tbl = document.getElementById("tb-sala-config-itens");
-        if (!tbl) return;
-        const tbody = tbl.querySelector("tbody");
-        if (!tbody) return;
-
-        // Drag & Drop (apenas linhas com draggable="true")
-        const draggableRows = tbody.querySelectorAll("tr[draggable='true']");
-        draggableRows.forEach(function (tr) {
-            tr.addEventListener("dragstart", onRowDragStart);
-            tr.addEventListener("dragover", onRowDragOver);
-            tr.addEventListener("drop", onRowDrop);
-            tr.addEventListener("dragend", onRowDragEnd);
-        });
-
-        // Duplo clique para editar nome (somente itens ativos)
-        const nameCells = tbody.querySelectorAll("tr[data-type='item'] td.name-cell");
-        nameCells.forEach(function (td) {
-            td.addEventListener("dblclick", function () {
-                startEditSalaConfigName(td);
-            });
-        });
-
-        // Checkbox Ativo/Ativa
-        const checkboxesAtivo = tbody.querySelectorAll("input.form-edit-checkbox-ativo");
-        checkboxesAtivo.forEach(function (chk) {
-            chk.addEventListener("change", function () {
-                const row = chk.closest("tr");
-                if (!row) return;
-
-                const idx = parseInt(row.getAttribute("data-item-index"), 10);
-                if (isNaN(idx)) return;
-
-                handleSalaConfigAtivoChange(idx, chk.checked);
-            });
-        });
-
-        // Dropdown Tipo
-        const selectsTipo = tbody.querySelectorAll("select.form-edit-select-tipo");
-        selectsTipo.forEach(function (select) {
-            select.addEventListener("change", function () {
-                const idx = parseInt(select.getAttribute("data-item-index"), 10);
-                if (isNaN(idx)) return;
-                handleSalaConfigTipoChange(idx, select.value);
-            });
-        });
-    }
-
-    function setupSalaConfigBlankRow() {
-        const input = document.getElementById("sala-config-new-item-input");
-        if (!input) return;
-
-        input.addEventListener("keydown", function (ev) {
-            if (ev.key === "Enter") {
-                ev.preventDefault();
-                input.blur();
-            } else if (ev.key === "Escape") {
-                ev.preventDefault();
-                input.value = "";
-            }
-        });
-
-        input.addEventListener("blur", function () {
-            const value = input.value.trim();
-            if (!value) return;
-            createNewSalaConfigItemFromName(value);
-        });
-    }
-
-    function startEditSalaConfigName(cell) {
-        const row = cell.closest("tr");
-        if (!row) return;
-        const idx = parseInt(row.getAttribute("data-item-index"), 10);
-        if (isNaN(idx)) return;
-
-        const ent = state.entities.sala_config;
-        const item = (ent.items || [])[idx];
-        if (!item || !item.ativo) return;
-
-        if (cell.querySelector("input")) return;
-
-        const current = item.nome || "";
-        const input = document.createElement("input");
-        input.type = "text";
-        input.value = current;
-        input.className = "form-edit-input-name";
-
-        cell.innerHTML = "";
-        cell.appendChild(input);
-        input.focus();
-        input.select();
-
-        function commit() {
-            const newVal = input.value.trim();
-            if (newVal && newVal !== item.nome) {
-                item.nome = newVal;
-                item._highlight = true;
-                markDirty("sala_config");
-            }
-            renderSalaConfigTable();
-        }
-
-        input.addEventListener("blur", commit);
-        input.addEventListener("keydown", function (ev) {
-            if (ev.key === "Enter") {
-                ev.preventDefault();
-                input.blur();
-            } else if (ev.key === "Escape") {
-                ev.preventDefault();
-                renderSalaConfigTable();
-            }
-        });
-    }
-
     function createNewSalaConfigItemFromName(nome) {
         const ent = state.entities.sala_config;
 
         // Captura tipo_widget do dropdown da linha em branco
-        const tipoSelect = document.getElementById("sala-config-new-tipo-input");
+        const tipoSelect = document.getElementById("form-edit-new-tipo-sala_config");
         const tipoWidget = tipoSelect ? tipoSelect.value : "radio";
 
         const items = ent.items || [];
@@ -1162,28 +920,7 @@
         ent.insertIndex = null;
 
         markDirty("sala_config");
-        renderSalaConfigTable();
-    }
-
-    function handleSalaConfigAtivoChange(index, checked) {
-        const ent = state.entities.sala_config;
-        if (!ent || !Array.isArray(ent.items)) return;
-
-        const items = ent.items.slice();
-        const item = items[index];
-        if (!item) return;
-
-        const novoAtivo = !!checked;
-        if (item.ativo === novoAtivo) return;
-
-        item.ativo = novoAtivo;
-        item._highlight = true;
-
-        ent.items = items;
-        ent.insertIndex = null;
-
-        markDirty("sala_config");
-        renderSalaConfigTable();
+        renderEntityTable("sala_config");
     }
 
     function handleSalaConfigTipoChange(index, novoTipo) {
@@ -1200,6 +937,19 @@
         updateActionsState();
     }
 
+    function buildSalaConfigItems(ent) {
+        return (ent.items || []).filter(function (it) {
+            return it.ativo;
+        }).map(function (it, idx) {
+            return {
+                nome: it.nome,
+                tipo_widget: it.tipo_widget || "radio",
+                ordem: idx + 1,
+                ativo: true
+            };
+        });
+    }
+
     async function handleSalaConfigSalvar() {
         const ent = state.entities.sala_config;
         if (!ent.dirty || !ent.selectedSalaId) return;
@@ -1213,16 +963,7 @@
 
         const payload = {
             sala_id: salaId,
-            items: (ent.items || []).filter(function (it) {
-                return it.ativo;
-            }).map(function (it, idx) {
-                return {
-                    nome: it.nome,
-                    tipo_widget: it.tipo_widget || "radio",
-                    ordem: idx + 1,
-                    ativo: true
-                };
-            })
+            items: buildSalaConfigItems(ent)
         };
 
         const json = await fetchJson(url, {
@@ -1231,7 +972,7 @@
             body: JSON.stringify(payload)
         });
 
-        if (!json || !json.success) {
+        if (!json || !json.ok) {
             alert("Erro ao salvar configuração: " + (json && json.message ? json.message : "Erro desconhecido"));
             return;
         }
@@ -1258,16 +999,7 @@
 
         const payload = {
             source_sala_id: ent.selectedSalaId,
-            items: (ent.items || []).filter(function (it) {
-                return it.ativo;
-            }).map(function (it, idx) {
-                return {
-                    nome: it.nome,
-                    tipo_widget: it.tipo_widget || "radio",
-                    ordem: idx + 1,
-                    ativo: true
-                };
-            })
+            items: buildSalaConfigItems(ent)
         };
 
         const json = await fetchJson(url, {
@@ -1276,7 +1008,7 @@
             body: JSON.stringify(payload)
         });
 
-        if (!json || !json.success) {
+        if (!json || !json.ok) {
             alert("Erro ao aplicar configuração: " + (json && json.message ? json.message : "Erro desconhecido"));
             return;
         }

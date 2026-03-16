@@ -43,10 +43,12 @@ st.markdown(
 # Sugestão: defina DATABASE_URL no .env ou no secrets.toml do Streamlit
 # Exemplo de valor:
 #   postgresql+psycopg2://n8n_user:SUA_SENHA@127.0.0.1:5432/n8n_data
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://n8n_user:SF159PontosAP@127.0.0.1:5432/n8n_data",
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "Variável de ambiente DATABASE_URL não definida. "
+        "Exemplo: postgresql+psycopg2://n8n_user:SENHA@127.0.0.1:5432/n8n_data"
+    )
 
 engine = create_engine(DATABASE_URL)
 

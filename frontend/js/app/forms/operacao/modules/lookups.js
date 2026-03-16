@@ -16,12 +16,7 @@ export async function loadSalas(salaSelect) {
     salaSelect.disabled = true;
 
     try {
-        let resp;
-        if (window.Auth && typeof Auth.authFetch === "function") {
-            resp = await Auth.authFetch(SALAS_URL, { method: "GET" });
-        } else {
-            resp = await fetch(SALAS_URL, { method: "GET" });
-        }
+        const resp = await Auth.authFetch(SALAS_URL, { method: "GET" });
 
         const json = await safeJson(resp);
         if (!resp.ok || !json || json.ok === false || !Array.isArray(json.data)) {
@@ -52,12 +47,7 @@ export async function loadComissoes(comissaoSelect, salaSelect) {
     comissaoSelect.innerHTML = '<option value="">Carregando...</option>';
 
     try {
-        let resp;
-        if (window.Auth && typeof Auth.authFetch === "function") {
-            resp = await Auth.authFetch(COMISSOES_URL, { method: "GET" });
-        } else {
-            resp = await fetch(COMISSOES_URL, { method: "GET" });
-        }
+        const resp = await Auth.authFetch(COMISSOES_URL, { method: "GET" });
 
         const json = await safeJson(resp);
         if (!resp.ok || !json || json.ok === false || !Array.isArray(json.data)) {
@@ -91,12 +81,7 @@ export async function loadOperadores(operador1Select, operador2Select, operador3
     });
 
     try {
-        let resp;
-        if (window.Auth && typeof Auth.authFetch === "function") {
-            resp = await Auth.authFetch(OPERADORES_URL, { method: "GET" });
-        } else {
-            resp = await fetch(OPERADORES_URL, { method: "GET" });
-        }
+        const resp = await Auth.authFetch(OPERADORES_URL, { method: "GET" });
 
         const json = await safeJson(resp);
         if (!resp.ok || !json || json.ok === false || !Array.isArray(json.data)) {

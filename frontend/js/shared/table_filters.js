@@ -1281,14 +1281,6 @@
         }
     }
 
-    function applyDistinctMap(tableId, distinctMap) {
-        if (!distinctMap || typeof distinctMap !== "object") return;
-
-        Object.keys(distinctMap).forEach((colKey) => {
-            setDistinctValues(tableId, colKey, distinctMap[colKey] || []);
-        });
-    }
-
     /**
      * Aplica um mapa de distinct vindo do backend:
      *   meta.distinct = { coluna: [{value,label}, ...], ... }

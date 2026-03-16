@@ -1,16 +1,13 @@
 from typing import Optional, Dict, Any
+from django.conf import settings
 from django.db import connection
 import secrets
 
-def fetchone_dict(cur) -> Optional[Dict[str, Any]]:
-    row = cur.fetchone()
-    if not row:
-        return None
-    desc = [c[0] for c in cur.description]
-    return dict(zip(desc, row))
+from .utils import fetchone_dict
+
 
 def get_user_for_login(usuario: str) -> Optional[Dict[str, Any]]:
-    # União de administrador e operador, como no n8n
+    """Busca usuario (admin ou operador) por username ou email para login."""
     sql = '''
     SELECT * FROM (
       SELECT
@@ -31,19 +28,9 @@ def get_user_for_login(usuario: str) -> Optional[Dict[str, Any]]:
     '''
     with connection.cursor() as cur:
         cur.execute(sql, [usuario, usuario, usuario, usuario])
-        row = fetchone_dict(cur)
-        if not row:
-            return None
-        # Normaliza chaves
-        return {
-            "perfil": row["perfil"],
-            "id": row["id"],
-            "nome_completo": row["nome_completo"],
-            "username": row["username"],
-            "email": row["email"],
-            "password_hash": row["password_hash"],
-        }
-    
+        return fetchone_dict(cur)
+
+
 def create_session(user_id: str) -> int:
     """
     Cria uma sessão em pessoa.auth_sessions com um refresh_token_hash aleatório.
@@ -68,3 +55,25 @@ def revoke_session(sid: int, user_id: str) -> int:
     with connection.cursor() as cur:
         cur.execute(sql, [sid, user_id])
         return cur.rowcount
+
+
+def session_touch_ok(sid: int, sub: str) -> bool:
+    """Atualiza last_activity se a sessao nao estiver revogada e dentro do tempo limite."""
+    with connection.cursor() as cur:
+        cur.execute(
+            '''
+            WITH upd AS (
+                UPDATE pessoa.auth_sessions
+                   SET last_activity = NOW()
+                 WHERE id = %s::bigint
+                   AND user_id = %s::uuid
+                   AND revoked = false
+                   AND NOW() - last_activity <= (%s || ' seconds')::interval
+                 RETURNING id
+            )
+            SELECT id FROM upd;
+            ''',
+            [sid, sub, settings.SESSION_TOUCH_MAX_AGE_SECONDS],
+        )
+        row = cur.fetchone()
+        return bool(row and row[0])

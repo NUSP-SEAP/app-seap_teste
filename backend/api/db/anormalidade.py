@@ -1,5 +1,10 @@
+import logging
 from typing import Optional, Dict, Any
 from django.db import connection
+
+from .utils import fetchone_dict
+
+logger = logging.getLogger(__name__)
 
 
 def insert_registro_anormalidade(
@@ -125,33 +130,21 @@ def get_registro_operacao_audio_for_anormalidade(
     """
 
     if entrada_id is not None:
-        # Usa a entrada específica para pegar o nome do evento
         sql = """
-        SELECT
-            r.id::bigint,
-            r.data::text,
-            r.sala_id::smallint,
-            e.nome_evento::text
+        SELECT r.id::bigint, r.data::text, r.sala_id::smallint, e.nome_evento::text
         FROM operacao.registro_operacao_audio AS r
         JOIN operacao.registro_operacao_operador AS e
-          ON e.registro_id = r.id
-         AND e.id = %s::bigint
+          ON e.registro_id = r.id AND e.id = %s::bigint
         WHERE r.id = %s::bigint;
         """
         params = [entrada_id, registro_id]
     else:
-        # Fallback: usa o nome_evento da primeira entrada da sessão (se houver)
         sql = """
-        SELECT
-            r.id::bigint,
-            r.data::text,
-            r.sala_id::smallint,
-            (
-                SELECT e.nome_evento::text
-                FROM operacao.registro_operacao_operador AS e
-                WHERE e.registro_id = r.id
-                ORDER BY e.ordem ASC, e.id ASC
-                LIMIT 1
+        SELECT r.id::bigint, r.data::text, r.sala_id::smallint,
+            (SELECT e.nome_evento::text
+             FROM operacao.registro_operacao_operador AS e
+             WHERE e.registro_id = r.id
+             ORDER BY e.ordem ASC, e.id ASC LIMIT 1
             ) AS nome_evento
         FROM operacao.registro_operacao_audio AS r
         WHERE r.id = %s::bigint;
@@ -160,46 +153,19 @@ def get_registro_operacao_audio_for_anormalidade(
 
     with connection.cursor() as cur:
         cur.execute(sql, params)
-        row = cur.fetchone()
-        if not row:
-            return None
-
-        return {
-            "id": int(row[0]),
-            "data": row[1],
-            "sala_id": int(row[2]),
-            "nome_evento": row[3],
-        }
+        return fetchone_dict(cur)
 
 
 def get_registro_anormalidade_por_entrada(entrada_id: int) -> Optional[Dict[str, Any]]:
-    """
-    Busca o registro de anormalidade vinculado a uma ENTRADA
-    (operacao.registro_anormalidade.entrada_id).
-
-    Retorna None se não existir.
-    """
+    """Busca o registro de anormalidade vinculado a uma entrada. Retorna None se nao existir."""
     sql = """
-        SELECT
-            id,
-            registro_id,
-            entrada_id,
-            data,
-            sala_id,
-            nome_evento,
-            hora_inicio_anormalidade,
-            descricao_anormalidade,
-            houve_prejuizo,
-            descricao_prejuizo,
-            houve_reclamacao,
-            autores_conteudo_reclamacao,
-            acionou_manutencao,
-            hora_acionamento_manutencao,
-            resolvida_pelo_operador,
-            procedimentos_adotados,
-            data_solucao,
-            hora_solucao,
-            responsavel_evento
+        SELECT id, registro_id, entrada_id, data, sala_id, nome_evento,
+               hora_inicio_anormalidade, descricao_anormalidade,
+               houve_prejuizo, descricao_prejuizo,
+               houve_reclamacao, autores_conteudo_reclamacao,
+               acionou_manutencao, hora_acionamento_manutencao,
+               resolvida_pelo_operador, procedimentos_adotados,
+               data_solucao, hora_solucao, responsavel_evento
         FROM operacao.registro_anormalidade
         WHERE entrada_id = %s::bigint
         ORDER BY id DESC
@@ -207,38 +173,12 @@ def get_registro_anormalidade_por_entrada(entrada_id: int) -> Optional[Dict[str,
     """
     with connection.cursor() as cur:
         cur.execute(sql, [entrada_id])
-        row = cur.fetchone()
+        row = fetchone_dict(cur)
         if not row:
             return None
-
-        data_solucao = row[16]
-        hora_solucao = row[17]
-        # Se tiver data ou hora de solução, consideramos "solucionada"
-        anormalidade_solucionada = bool(data_solucao or hora_solucao)
-
-        return {
-            "id": int(row[0]),
-            "registro_id": int(row[1]),
-            "entrada_id": int(row[2]),
-            "data": row[3],
-            "sala_id": int(row[4]),
-            "nome_evento": row[5],
-            "hora_inicio_anormalidade": row[6],
-            "descricao_anormalidade": row[7],
-            "houve_prejuizo": bool(row[8]),
-            "descricao_prejuizo": row[9],
-            "houve_reclamacao": bool(row[10]),
-            "autores_conteudo_reclamacao": row[11],
-            "acionou_manutencao": bool(row[12]),
-            "hora_acionamento_manutencao": row[13],
-            "resolvida_pelo_operador": bool(row[14]),
-            "procedimentos_adotados": row[15],
-            "data_solucao": data_solucao,
-            "hora_solucao": hora_solucao,
-            "responsavel_evento": row[18],
-            # Campo derivado, usado apenas para preencher o rádio no front-end
-            "anormalidade_solucionada": anormalidade_solucionada,
-        }
+        # Campo derivado para o frontend
+        row["anormalidade_solucionada"] = bool(row.get("data_solucao") or row.get("hora_solucao"))
+        return row
 
 
 def update_registro_anormalidade(
@@ -310,4 +250,6 @@ def update_registro_anormalidade(
                 anom_id,
             ],
         )
+        if cur.rowcount == 0:
+            logger.warning("update_registro_anormalidade: nenhuma linha atualizada para anom_id=%s", anom_id)
     return anom_id

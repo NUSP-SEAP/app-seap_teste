@@ -1,6 +1,8 @@
 import json
 from django.db import connection
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
+
+from .utils import fetchone_dict, fetchall_dicts
 
 def checklist_item_tipo_map() -> Dict[str, int]:
     """
@@ -79,62 +81,47 @@ def insert_checklist(
         return int(new_id)
 
 
+def _resolve_item_fields(
+    it: Dict[str, Any],
+    tipos_map: Optional[Dict[str, int]] = None,
+) -> Optional[Tuple[int, str, str, str]]:
+    """Resolve tipo_id, status, descricao_falha e valor_texto de um item de checklist.
+    Retorna None se o item deve ser ignorado (sem tipo_id ou sem status)."""
+    tipo_id = it.get("item_tipo_id")
+    if not tipo_id and tipos_map:
+        nome = (it.get("nome") or "").strip()
+        tipo_id = tipos_map.get(nome)
+    if not tipo_id:
+        return None
+
+    status = (it.get("status") or "").strip()
+    desc = (it.get("descricao_falha") or "").strip()
+    valor_texto = (it.get("valor_texto") or "").strip()
+
+    if not status and valor_texto:
+        status = "Ok"
+    if not status:
+        return None
+
+    return (int(tipo_id), status, desc, valor_texto)
+
+
 def insert_checklist_respostas(
     checklist_id: int,
     itens: List[Dict[str, Any]],
     criado_por: Optional[str] = None,
     atualizado_por: Optional[str] = None,
 ) -> int:
-    """
-    Insere as respostas em forms.checklist_resposta.
-
-    Param:
-      - checklist_id: id do cabeçalho já inserido
-      - itens: lista de objetos { item_tipo_id, status, descricao_falha, valor_texto }
-      - criado_por / atualizado_por: autoria (uuid) – opcional
-
-    Observações:
-      - 'status' deve ser 'Ok' ou 'Falha' (há CHECK no banco).
-      - Se o item for do tipo texto e tiver 'valor_texto', status é gravado como 'Ok'.
-    """
-    # Carrega mapa para fallback (caso venha apenas o nome)
+    """Insere as respostas em forms.checklist_resposta."""
     tipos_map = checklist_item_tipo_map()
-    
+
     rows: List[tuple] = []
     for it in (itens or []):
-        # 1. Tenta resolver o ID do item
-        tipo_id = it.get("item_tipo_id")
-        if not tipo_id:
-            # Fallback: tenta pelo nome
-            nome = (it.get("nome") or "").strip()
-            tipo_id = tipos_map.get(nome)
-        
-        if not tipo_id:
-            # Ignora itens não identificados
+        resolved = _resolve_item_fields(it, tipos_map)
+        if not resolved:
             continue
-
-        # 2. Leitura dos campos
-        status = (it.get("status") or "").strip()
-        desc = (it.get("descricao_falha") or "").strip()
-        valor_texto = (it.get("valor_texto") or "").strip()
-
-        # 3. Regra para itens de texto:
-        # Se tem texto preenchido e não veio status explícito, assume 'Ok'
-        if not status and valor_texto:
-            status = "Ok"
-
-        if not status:
-            continue
-
-        rows.append((
-            checklist_id,
-            int(tipo_id),
-            status,
-            desc,
-            valor_texto,
-            criado_por,
-            atualizado_por,
-        ))
+        tipo_id, status, desc, valor_texto = resolved
+        rows.append((checklist_id, tipo_id, status, desc, valor_texto, criado_por, atualizado_por))
 
     if not rows:
         return 0
@@ -143,51 +130,21 @@ def insert_checklist_respostas(
         cur.executemany(
             """
             INSERT INTO forms.checklist_resposta (
-                checklist_id,
-                item_tipo_id,
-                status,
-                descricao_falha,
-                valor_texto,
-                criado_por,
-                atualizado_por
+                checklist_id, item_tipo_id, status,
+                descricao_falha, valor_texto, criado_por, atualizado_por
             )
             VALUES (
-                %s::bigint,
-                %s::smallint,
-                %s::text,
-                NULLIF(BTRIM(%s::text), ''),
-                NULLIF(BTRIM(%s::text), ''),
-                %s::uuid,
-                %s::uuid
+                %s::bigint, %s::smallint, %s::text,
+                NULLIF(BTRIM(%s::text), ''), NULLIF(BTRIM(%s::text), ''),
+                %s::uuid, %s::uuid
             );
             """,
             rows
         )
         return cur.rowcount
 
-def list_checklist_item_tipo() -> List[Dict[str, Any]]:
-    """
-    Retorna a lista de todos os tipos de item do catálogo.
-    """
-    sql = """
-    SELECT id, nome, tipo_widget
-      FROM forms.checklist_item_tipo
-     ORDER BY nome ASC, id ASC;
-    """
-    with connection.cursor() as cur:
-        cur.execute(sql)
-        rows = cur.fetchall()
-
-    return [
-        {"id": row[0], "nome": row[1], "tipo_widget": row[2]}
-        for row in rows
-    ]
-
 def list_checklist_itens_por_sala(sala_id: int) -> List[Dict[str, Any]]:
-    """
-    Retorna os itens ativos configurados para uma sala,
-    incluindo o tipo do widget (radio ou text).
-    """
+    """Retorna os itens ativos configurados para uma sala."""
     sql = """
     SELECT t.id, t.nome::text, c.ordem, t.tipo_widget
       FROM forms.checklist_sala_config c
@@ -198,12 +155,7 @@ def list_checklist_itens_por_sala(sala_id: int) -> List[Dict[str, Any]]:
     """
     with connection.cursor() as cur:
         cur.execute(sql, [sala_id])
-        rows = cur.fetchall()
-
-    return [
-        {"id": row[0], "nome": row[1], "ordem": row[2], "tipo_widget": row[3]}
-        for row in rows
-    ]
+        return fetchall_dicts(cur)
 
 
 # ──────────────────────────────────────────────
@@ -211,10 +163,9 @@ def list_checklist_itens_por_sala(sala_id: int) -> List[Dict[str, Any]]:
 # ──────────────────────────────────────────────
 
 def get_checklist_snapshot(checklist_id: int) -> Dict[str, Any]:
-    """
-    Captura o estado atual completo de um checklist (header + respostas)
-    para armazenamento no histórico antes de uma edição.
-    """
+    """Captura o estado atual completo de um checklist (header + respostas)
+    para armazenamento no historico antes de uma edicao.
+    Nota: json.dumps(default=str) no chamador converte datas automaticamente."""
     with connection.cursor() as cur:
         cur.execute("""
             SELECT data_operacao, sala_id, turno, hora_inicio_testes,
@@ -222,14 +173,7 @@ def get_checklist_snapshot(checklist_id: int) -> Dict[str, Any]:
               FROM forms.checklist
              WHERE id = %s::bigint
         """, [checklist_id])
-        cols = [c[0] for c in cur.description]
-        row = cur.fetchone()
-        header = dict(zip(cols, row)) if row else {}
-        for k, v in header.items():
-            if hasattr(v, 'isoformat'):
-                header[k] = v.isoformat()
-            elif v is not None:
-                header[k] = str(v)
+        header = fetchone_dict(cur) or {}
 
     with connection.cursor() as cur:
         cur.execute("""
@@ -238,8 +182,7 @@ def get_checklist_snapshot(checklist_id: int) -> Dict[str, Any]:
               FROM forms.checklist_resposta
              WHERE checklist_id = %s::bigint
         """, [checklist_id])
-        cols = [c[0] for c in cur.description]
-        itens = [dict(zip(cols, r)) for r in cur.fetchall()]
+        itens = fetchall_dicts(cur)
 
     return {"header": header, "itens": itens}
 
@@ -304,11 +247,8 @@ def update_checklist_respostas(
     itens: List[Dict[str, Any]],
     atualizado_por: Optional[str] = None,
 ) -> int:
-    """
-    Atualiza as respostas de um checklist existente.
-    Marca cada resposta como editada SOMENTE se os valores realmente mudaram
-    (usa IS DISTINCT FROM para comparação segura incluindo NULLs).
-    """
+    """Atualiza as respostas de um checklist existente.
+    Marca cada resposta como editada SOMENTE se os valores realmente mudaram."""
     sql = """
         UPDATE forms.checklist_resposta
            SET status          = %s::text,
@@ -326,25 +266,17 @@ def update_checklist_respostas(
     """
     rows = []
     for it in (itens or []):
-        item_tipo_id = it.get("item_tipo_id")
-        status = (it.get("status") or "").strip()
-        desc = (it.get("descricao_falha") or "").strip()
-        valor = (it.get("valor_texto") or "").strip()
-
-        # Regra para itens de texto: se tem texto e sem status, assume 'Ok'
-        if not status and valor:
-            status = "Ok"
-
-        if not item_tipo_id or not status:
+        resolved = _resolve_item_fields(it)
+        if not resolved:
             continue
-
-        # Valores passados 2x: para SET e para comparação IS DISTINCT FROM
+        tipo_id, status, desc, valor = resolved
+        # Valores passados 2x: para SET e para comparacao IS DISTINCT FROM
         rows.append((
-            status, desc, valor,       # SET
-            status, desc, valor,       # comparação
+            status, desc, valor,
+            status, desc, valor,
             atualizado_por,
             checklist_id,
-            int(item_tipo_id),
+            tipo_id,
         ))
 
     if not rows:

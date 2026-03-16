@@ -55,120 +55,59 @@
     // ---------------- Parse de entradas ----------------
 
     /**
-     * Interpreta expressão de anos:
-     *  "2020" → [2020]
-     *  "2020, 2022-2024" → [2020, 2022, 2023, 2024]
-     *  retorna [] se vazio, null se inválido.
+     * Base comum para parseYears e parseMonths.
+     * Interpreta uma expressão de inteiros separados por vírgula, com
+     * suporte a intervalos (ex: "2020, 2022-2024" ou "1, 3-5").
+     * Retorna [] se vazio, null se inválido ou fora do range [min, max].
+     * @param {string} digitPattern - padrão de dígitos sem âncoras (ex: "\\d{4}" ou "\\d{1,2}")
      */
-    function parseYears(expr) {
+    function parseRange(expr, min, max, digitPattern) {
         const raw = (expr || "").trim();
         if (!raw) return [];
 
-        const years = [];
+        const results = [];
         const parts = raw.split(",");
+        const reSingle = new RegExp("^" + digitPattern + "$");
+        const reRange = new RegExp("^(" + digitPattern + ")\\s*-\\s*(" + digitPattern + ")$");
 
         for (let part of parts) {
             part = part.trim();
             if (!part) continue;
 
-            // Ano único
-            if (/^\d{4}$/.test(part)) {
-                const y = parseInt(part, 10);
-                if (!Number.isFinite(y) || y < MIN_YEAR || y > CURRENT_YEAR) {
-                    return null;
-                }
-                years.push(y);
+            if (reSingle.test(part)) {
+                const v = parseInt(part, 10);
+                if (!Number.isFinite(v) || v < min || v > max) return null;
+                results.push(v);
                 continue;
             }
 
-            // Intervalo: 2018-2020
-            const m = part.match(/^(\d{4})\s*-\s*(\d{4})$/);
+            const m = part.match(reRange);
             if (m) {
-                let y1 = parseInt(m[1], 10);
-                let y2 = parseInt(m[2], 10);
-                if (!Number.isFinite(y1) || !Number.isFinite(y2)) {
-                    return null;
-                }
-                if (y1 > y2) {
-                    const tmp = y1;
-                    y1 = y2;
-                    y2 = tmp;
-                }
-                if (y1 < MIN_YEAR || y2 > CURRENT_YEAR) {
-                    return null;
-                }
-                for (let y = y1; y <= y2; y++) {
-                    years.push(y);
-                }
+                let v1 = parseInt(m[1], 10);
+                let v2 = parseInt(m[2], 10);
+                if (!Number.isFinite(v1) || !Number.isFinite(v2)) return null;
+                if (v1 > v2) { const tmp = v1; v1 = v2; v2 = tmp; }
+                if (v1 < min || v2 > max) return null;
+                for (let v = v1; v <= v2; v++) results.push(v);
                 continue;
             }
 
-            // Qualquer outra coisa é inválida
             return null;
         }
 
-        const unique = Array.from(new Set(years));
+        const unique = Array.from(new Set(results));
         unique.sort((a, b) => a - b);
         return unique;
     }
 
-    /**
-     * Interpreta expressão de meses:
-     *  "2" → [2]
-     *  "4, 6, 9" → [4, 6, 9]
-     *  "1-3, 5-7" → [1, 2, 3, 5, 6, 7]
-     *  retorna [] se vazio, null se inválido.
-     */
+    /** Interpreta expressão de anos (ex: "2020, 2022-2024"). Retorna [] se vazio, null se inválido. */
+    function parseYears(expr) {
+        return parseRange(expr, MIN_YEAR, CURRENT_YEAR, "\\d{4}");
+    }
+
+    /** Interpreta expressão de meses (ex: "1, 3-5, 10-12"). Retorna [] se vazio, null se inválido. */
     function parseMonths(expr) {
-        const raw = (expr || "").trim();
-        if (!raw) return [];
-
-        const months = [];
-        const parts = raw.split(",");
-
-        for (let part of parts) {
-            part = part.trim();
-            if (!part) continue;
-
-            // Mês único
-            if (/^\d{1,2}$/.test(part)) {
-                const mm = parseInt(part, 10);
-                if (!Number.isFinite(mm) || mm < 1 || mm > 12) {
-                    return null;
-                }
-                months.push(mm);
-                continue;
-            }
-
-            // Intervalo: 1-3
-            const m = part.match(/^(\d{1,2})\s*-\s*(\d{1,2})$/);
-            if (m) {
-                let m1 = parseInt(m[1], 10);
-                let m2 = parseInt(m[2], 10);
-                if (!Number.isFinite(m1) || !Number.isFinite(m2)) {
-                    return null;
-                }
-                if (m1 > m2) {
-                    const tmp = m1;
-                    m1 = m2;
-                    m2 = tmp;
-                }
-                if (m1 < 1 || m2 > 12) {
-                    return null;
-                }
-                for (let mm = m1; mm <= m2; mm++) {
-                    months.push(mm);
-                }
-                continue;
-            }
-
-            // Qualquer outra coisa é inválida
-            return null;
-        }
-
-        const unique = Array.from(new Set(months));
-        unique.sort((a, b) => a - b);
-        return unique;
+        return parseRange(expr, 1, 12, "\\d{1,2}");
     }
 
     /**

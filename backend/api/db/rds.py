@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from django.db import connection
 
-from .admin_dashboard import fetch_all_dict
+from .utils import fetchall_dicts
 
 
 def list_rds_anos() -> List[int]:
@@ -17,7 +17,7 @@ def list_rds_anos() -> List[int]:
             ORDER BY ano ASC
             """
         )
-        rows = fetch_all_dict(cur)
+        rows = fetchall_dicts(cur)
         return [int(r["ano"]) for r in rows if r.get("ano") is not None]
 
 
@@ -32,7 +32,7 @@ def list_rds_meses(ano: int) -> List[int]:
             """,
             [ano],
         )
-        rows = fetch_all_dict(cur)
+        rows = fetchall_dicts(cur)
         return [int(r["mes"]) for r in rows if r.get("mes") is not None]
 
 
@@ -86,4 +86,4 @@ def fetch_rds_rows(ano: int, mes: int) -> List[Dict[str, Any]]:
             """,
             [start, end],
         )
-        return fetch_all_dict(cur)
+        return fetchall_dicts(cur)

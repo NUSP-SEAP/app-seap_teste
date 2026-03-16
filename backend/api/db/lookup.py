@@ -1,5 +1,8 @@
 from django.db import connection
 
+from .utils import fetchall_dicts
+
+
 def lookup_operadores():
     sql = (
         "SELECT id::text AS id, nome_completo::text AS nome_completo "
@@ -8,7 +11,7 @@ def lookup_operadores():
     )
     with connection.cursor() as cur:
         cur.execute(sql)
-        return [{"id": r[0], "nome_completo": r[1]} for r in cur.fetchall()]
+        return fetchall_dicts(cur)
 
 
 def lookup_salas():
@@ -20,4 +23,17 @@ def lookup_salas():
     )
     with connection.cursor() as cur:
         cur.execute(sql)
-        return [{"id": r[0], "nome": r[1]} for r in cur.fetchall()]
+        return fetchall_dicts(cur)
+
+
+def lookup_comissoes():
+    """Retorna comissoes ativas ordenadas por ordem e nome."""
+    sql = """
+        SELECT c.id, c.nome
+        FROM cadastro.comissao c
+        WHERE c.ativo IS TRUE
+        ORDER BY COALESCE(c.ordem, 9999), c.nome;
+    """
+    with connection.cursor() as cur:
+        cur.execute(sql)
+        return fetchall_dicts(cur)
